@@ -26,7 +26,7 @@ import { riwayaLabel } from '../src/utils/riwaya.ts';
 import { sortByArabicName } from '../src/utils/reciter-order.ts';
 import { surahName } from '../src/utils/surah-name.ts';
 import { surahsForRelease } from '../src/utils/release-surahs.ts';
-import { breadcrumbTrail, combinedGraph, faqPage, reciterGraph, websiteGraph } from '../src/utils/schema.ts';
+import { breadcrumbTrail, combinedGraph, directoryGraph, faqPage, reciterGraph, websiteGraph } from '../src/utils/schema.ts';
 import { SURAHS } from '../src/constants/surah.ts';
 import { SURAH_NAMES_EN } from '../src/i18n/surah-names-en.ts';
 import { MESSAGES } from '../src/i18n/messages.ts';
@@ -313,10 +313,28 @@ addPage('/reciters', (locale, copy) => ({
   title: pageTitle({ name: 'reciters' }, copy) ?? 'القرّاء - Tilawah',
   description: copy.recitersPage.lede,
   index: indexable('reciters'),
-  jsonLd: breadcrumbTrail([
-    { name: siteName(locale), url: urlFor('/', locale) },
-    { name: copy.recitersPage.title, url: urlFor('/reciters', locale) },
-  ]),
+  jsonLd: combinedGraph(
+    breadcrumbTrail([
+      { name: siteName(locale), url: urlFor('/', locale) },
+      { name: copy.recitersPage.title, url: urlFor('/reciters', locale) },
+    ]),
+    // The roster is a directory of people, and the row's `@id` is the same one the
+    // reciter page writes for that person — the hub and the twelve pages behind it
+    // are one graph, not thirteen unrelated documents.
+    directoryGraph({
+      site: SITE,
+      url: urlFor('/reciters', locale),
+      name: copy.recitersPage.title,
+      locale,
+      reciters: catalogue
+        .filter((release) => release.slug)
+        .map((release) => ({
+          name: release.nameAr ?? release.name,
+          riwaya: riwayaLabel(release.riwaya),
+          url: urlFor(`/reciters/${release.slug}`, locale),
+        })),
+    }),
+  ),
   body:
     `<h1>${escape(copy.recitersPage.title)}</h1><p>${escape(copy.recitersPage.lede)}</p><ul>` +
     catalogue

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { breadcrumbTrail, faqPage, websiteGraph } from '../src/utils/schema.ts';
+import { breadcrumbTrail, directoryGraph, faqPage, websiteGraph } from '../src/utils/schema.ts';
 
 test('the home graph names the site and the free application', () => {
   const graph = websiteGraph({
@@ -86,4 +86,59 @@ test('the FAQ markup is the same questions the page answers', () => {
   );
   assert.ok(page.mainEntity.every((entry) => entry['@type'] === 'Question'));
   assert.ok(page.mainEntity.every((entry) => entry.acceptedAnswer['@type'] === 'Answer'));
+});
+
+const reciters = [
+  {
+    name: 'ماهر المعيقلي',
+    riwaya: 'حفص عن عاصم',
+    url: 'https://tilawah.cc/reciters/maher-al-muaiqly',
+  },
+  {
+    name: 'ياسين الجزائري',
+    riwaya: 'ورش عن نافع',
+    url: 'https://tilawah.cc/reciters/yassine-el-jazairi-warsh',
+  },
+];
+
+test('the roster page says it is a directory, and lists what the page links to', () => {
+  const graph = directoryGraph({
+    site: 'https://tilawah.cc',
+    url: 'https://tilawah.cc/reciters',
+    name: 'القرّاء',
+    locale: 'ar',
+    reciters,
+  }) as { '@context': string; '@graph': Array<Record<string, any>> };
+
+  assert.equal(graph['@context'], 'https://schema.org');
+  const [page] = graph['@graph'];
+  assert.equal(page['@type'], 'CollectionPage');
+  assert.equal(page.url, 'https://tilawah.cc/reciters');
+  assert.equal(page.inLanguage, 'ar');
+  assert.equal(page.isPartOf['@id'], 'https://tilawah.cc/#website');
+  assert.equal(page.mainEntity['@type'], 'ItemList');
+  assert.equal(page.mainEntity.numberOfItems, reciters.length);
+  assert.deepEqual(
+    page.mainEntity.itemListElement.map((entry: Record<string, any>) => entry.position),
+    [1, 2],
+  );
+});
+
+test('each roster row points at the same person its own page describes', () => {
+  // The label is the page's own copy (name - riwaya), but the entity is the
+  // reciter page's Person node: same @id on both pages is what makes the roster
+  // and the 114 links behind it one thing rather than twelve strangers.
+  const graph = directoryGraph({
+    site: 'https://tilawah.cc',
+    url: 'https://tilawah.cc/reciters',
+    name: 'القرّاء',
+    locale: 'ar',
+    reciters,
+  }) as { '@graph': Array<Record<string, any>> };
+
+  const [first] = graph['@graph'][0].mainEntity.itemListElement;
+  assert.equal(first.name, 'ماهر المعيقلي - حفص عن عاصم');
+  assert.equal(first.item['@type'], 'Person');
+  assert.equal(first.item['@id'], 'https://tilawah.cc/reciters/maher-al-muaiqly#reciter');
+  assert.equal(first.item.url, 'https://tilawah.cc/reciters/maher-al-muaiqly');
 });

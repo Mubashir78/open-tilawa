@@ -134,6 +134,14 @@ export type ReciterSurah = {
   note: string;
 };
 
+/** One row of the roster: the name the page prints, its reading, and its page. */
+export type ReciterEntry = {
+  name: string;
+  riwaya: string;
+  /** Absolute URL of the reciter page, built by the router on the caller's side. */
+  url: string;
+};
+
 /**
  * `Person` + `CollectionPage` for one reciter.
  *
@@ -186,6 +194,54 @@ export function reciterGraph(input: {
             name: surah.name,
             url: surah.url,
             description: surah.note,
+          })),
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * `CollectionPage` for the roster, the one hub every reciter page hangs from.
+ *
+ * The page a visitor sees is a list of links. This graph says what the list is —
+ * a directory of twelve reciters, each the same `Person` its own page describes,
+ * because the `@id` here is the one `reciterGraph` writes there. A label keeps the
+ * page's own copy (`name - riwaya`), so the markup cannot name a reading the page
+ * does not print.
+ */
+export function directoryGraph(input: {
+  site: string;
+  url: string;
+  name: string;
+  locale: Locale;
+  reciters: ReciterEntry[];
+}): Record<string, unknown> {
+  const siteUrl = `${input.site.replace(/\/$/, '')}/`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': input.url,
+        url: input.url,
+        name: input.name,
+        inLanguage: input.locale,
+        isPartOf: { '@id': `${siteUrl}#website` },
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: input.reciters.length,
+          itemListElement: input.reciters.map((reciter, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: `${reciter.name} - ${reciter.riwaya}`,
+            item: {
+              '@type': 'Person',
+              '@id': `${reciter.url}#reciter`,
+              name: reciter.name,
+              url: reciter.url,
+            },
           })),
         },
       },

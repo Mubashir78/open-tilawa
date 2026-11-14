@@ -1,5 +1,20 @@
 # Changelog
 
+## web 1.13.39 — 2026-11-15
+
+Web release. App version: **web 1.13.39**.
+
+### Added
+
+- **The roster page says what it is.** `/reciters` carried a breadcrumb and
+  nothing else, so the one hub every reciter page hangs from never told a crawler
+  it was a directory of reciters. It now carries a `CollectionPage` whose
+  `ItemList` names each reciter with the label the page prints — `name - riwaya` —
+  and points at the same `Person` `@id` the reciter page writes, so the hub and
+  the twelve pages behind it read as one graph instead of thirteen strangers.
+  `directoryGraph()` in `src/utils/schema.ts`; `test/schema.test.ts` holds the
+  shape, `test/prerender.test.ts` holds the wiring.
+
 ## web 1.13.38 — 2026-11-13
 
 Web and admin release. App versions: **web 1.13.38**, **admin 1.34.0**, **seeder 1.5.7**.

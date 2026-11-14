@@ -161,7 +161,10 @@ test('the graph comes from the schema module and is escaped', () => {
     'a `<` in JSON-LD can end the script element',
   );
   assert.match(SOURCE, /jsonLd: websiteGraph\(/);
-  assert.match(SOURCE, /jsonLd: breadcrumbTrail\(/);
+  // Breadcrumbs are still the schema module's function; since the roster and the
+  // reciter pages carry two claims, it is passed into the merge instead of being
+  // the whole `jsonLd` value.
+  assert.match(SOURCE, /jsonLd: combinedGraph\(\s*breadcrumbTrail\(\[/);
 });
 
 /**
@@ -175,8 +178,17 @@ test('the about page carries its FAQ in words and in JSON-LD', () => {
   assert.match(SOURCE, /<dt>\$\{escape\(item\.q\)\}<\/dt>/);
 });
 
-test('the seeder page is prerendered from the route table', () => {
-  assert.match(SOURCE, /addPage\('\/seed'/);
+/**
+ * The roster is the crawl path to every reciter page; without a graph it is a
+ * list of links that never says it is a directory of reciters.
+ */
+test('the roster page names the directory, not only its place in the tree', () => {
+  assert.match(SOURCE, /import \{[^}]*directoryGraph[^}]*\} from '\.\.\/src\/utils\/schema\.ts'/);
+  assert.match(SOURCE, /jsonLd: combinedGraph\(\s*breadcrumbTrail\(/, 'reciters keeps its breadcrumb');
+  assert.match(SOURCE, /directoryGraph\(\{/);
+});
+
+test('the seeder page is prerendered from the route table', () => {  assert.match(SOURCE, /addPage\('\/seed'/);
   assert.match(SOURCE, /index: indexable\('seed'\)/);
 });
 
