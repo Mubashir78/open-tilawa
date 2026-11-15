@@ -14,6 +14,12 @@ export function pickLang(uiLanguage: string | undefined): Lang {
 
 const ar = {
   dir: 'rtl' as const,
+  pausedHeadline: 'المشاركة متوقّفة.',
+  seedingHeadline: 'يشارك {n} ويخدم {p} قرينًا.',
+  workingHeadline: 'جارٍ التنزيل الآن.',
+  idleHeadline: 'لا شيء يعمل الآن.',
+  pauseShort: 'إيقاف',
+  resumeShort: 'استئناف',
   navLabel: 'أقسام الصفحة',
   navReciters: 'القرّاء',
   navSettings: 'الإعدادات',
@@ -33,6 +39,8 @@ const ar = {
   aboutP2: 'لا حساب ولا معرّف دائم ولا إحصاءات. إزالة قارئ تحذف نسخته، وإزالة الإضافة تحذف كل شيء.',
   contactUs: 'راسلنا',
   suggestReciter: 'اقترح قارئًا',
+  trackerLink: 'حالة الشبكة',
+  storeLink: 'صفحة المتجر',
   privacyTitle: 'الخصوصية',
   termsTitle: 'الشروط',
   title: 'رفيق تلاوة',
@@ -72,6 +80,12 @@ const ar = {
 
 const en: Record<keyof typeof ar, string> = {
   dir: 'ltr',
+  pausedHeadline: 'Sharing is paused.',
+  seedingHeadline: 'Sharing {n} · {p} peers served.',
+  workingHeadline: 'Downloading now.',
+  idleHeadline: 'Nothing running right now.',
+  pauseShort: 'Pause',
+  resumeShort: 'Resume',
   navLabel: 'Page sections',
   navReciters: 'Reciters',
   navSettings: 'Settings',
@@ -91,6 +105,8 @@ const en: Record<keyof typeof ar, string> = {
   aboutP2: 'No account, no persistent identifier, no analytics. Removing a reciter deletes its copy; uninstalling deletes everything.',
   contactUs: 'Contact us',
   suggestReciter: 'Suggest a reciter',
+  trackerLink: 'Network status',
+  storeLink: 'Store page',
   privacyTitle: 'Privacy',
   termsTitle: 'Terms',
   title: 'Tilawah Companion',
@@ -128,4 +144,6 @@ const en: Record<keyof typeof ar, string> = {
   uploadHint: 'Zero stops uploading. Leave it empty for the default (1).',
 };
 
-export const copyFor = (lang: Lang) => (lang === 'ar' ? ar : (en as unknown as typeof ar));
+export type Copy = typeof ar;
+
+export const copyFor = (lang: Lang): Copy => (lang === 'ar' ? ar : (en as unknown as Copy));

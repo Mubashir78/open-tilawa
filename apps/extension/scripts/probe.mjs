@@ -107,6 +107,16 @@ const main = async () => {
     }
     log(`downloaded ${(reciter.sizeBytes / 1e6).toFixed(0)} MB`);
 
+    // P5 — the badge is visible: Chrome draws nothing when the text is empty, so
+    // a colour-only badge must still carry one space.
+    const badge = await first.page.evaluate(async () => ({
+      text: await chrome.action.getBadgeText({}),
+      color: await chrome.action.getBadgeBackgroundColor({}),
+      title: await chrome.action.getTitle({}),
+    }));
+    if (!badge.text) throw new Error('badge text is empty — Chrome renders no badge at all');
+    log(`P5 badge ok — "${badge.text}" ${JSON.stringify(badge.color)} · ${badge.title}`);
+
     // P4 rise: while this extension is seeding, the tracker's seeder count rises.
     const seeding = await stats();
     log(`tracker while seeding: peersSeederOnly ${seeding.peersSeederOnly}, WebTorrent ${JSON.stringify(seeding.clients?.WebTorrent ?? {})}`);

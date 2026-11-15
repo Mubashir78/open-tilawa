@@ -24,6 +24,9 @@ import { shouldRun } from '@/lib/limits';
 
 const TICK = 'tilawah-companion.tick';
 const TICK_MINUTES = 30;
+/** The badge must follow the swarm, not the half-hour clock. */
+const PAINT = 'tilawah-companion.paint';
+const PAINT_MINUTES = 1;
 const SYNC_EVERY_MS = 24 * 60 * 60 * 1000;
 const SYNC_KEY = 'tilawah-companion.sync.v1';
 const SEEN_KEY = 'tilawah-companion.notices.v1';
@@ -36,11 +39,25 @@ const COLOURS: Record<BadgeColor, string> = {
   red: '#a4402f',
 };
 
+/**
+ * One tick at a time. The install tick awaits the catalogue fetch, so a person
+ * who starts seeding immediately can have the older tick finish last and paint a
+ * grey badge over a green one.
+ */
+let chain: Promise<unknown> = Promise.resolve();
+const serial = <T,>(work: () => Promise<T>): Promise<T> => {
+  const next = chain.then(work, work);
+  chain = next.catch(() => undefined);
+  return next;
+};
+
 const paintBadge = async (states: HeldState[], reason: string | null): Promise<void> => {
   const badge = badgeFor(states, reason);
   try {
     await browser.action.setBadgeBackgroundColor({ color: COLOURS[badge.color] });
-    await browser.action.setBadgeText({ text: badge.text });
+    // Chrome renders nothing when the text is empty — a colour alone is not a
+    // badge. One space paints the dot without putting a number in it.
+    await browser.action.setBadgeText({ text: badge.text || ' ' });
     await browser.action.setTitle({ title: badge.title });
   } catch (error) {
     console.warn('badge unavailable', error);
@@ -109,15 +126,28 @@ const syncRoster = async (): Promise<void> => {
   }
 
   const seen = new Set<string>(Array.isArray(stored[SEEN_KEY]) ? (stored[SEEN_KEY] as string[]) : []);
-  for (const notice of notices) {
-    const key = `${notice.kind}:${notice.infohash}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    await browser.notifications.create(key, {
+  const unseen = notices.filter((notice) => !seen.has(`${notice.kind}:${notice.infohash}`));
+  for (const notice of unseen) seen.add(`${notice.kind}:${notice.infohash}`);
+
+  // One notification for the batch. Twelve notifications for twelve reciters is
+  // how a helpful extension gets muted.
+  if (unseen.length === 1) {
+    const only = unseen[0];
+    await browser.notifications.create(`batch:${only!.kind}:${only!.infohash}`, {
       type: 'basic',
       iconUrl: '/icon/128.png',
       title: 'Tilawah Companion',
-      message: notice.text,
+      message: only!.text,
+    });
+  } else if (unseen.length > 1) {
+    const added = unseen.filter((notice) => notice.kind === 'added');
+    const names = added.slice(0, 3).map((notice) => notice.text.replace(/^New reciter: /, ''));
+    const more = added.length > names.length ? ` +${added.length - names.length}` : '';
+    await browser.notifications.create(`batch:${Date.now()}`, {
+      type: 'basic',
+      iconUrl: '/icon/128.png',
+      title: `${unseen.length} updates in the roster`,
+      message: added.length > 0 ? `New reciters: ${names.join(' · ')}${more}` : unseen.map((notice) => notice.text).join(' · '),
     });
   }
 
@@ -156,6 +186,12 @@ const reconcile = async (): Promise<{ states: HeldState[]; error?: string }> => 
   }
 
   return { states, error: current.error };
+};
+
+const repaint = async (): Promise<void> => {
+  const settings = await loadSettings();
+  const { states } = await reconcile();
+  await paintBadge(settings.paused ? states.map((state) => ({ ...state, state: 'paused' as const })) : states, settings.paused ? 'paused' : null);
 };
 
 const tick = async (): Promise<UiReply> => {
@@ -203,7 +239,10 @@ const handleUi = async (request: UiRequest): Promise<UiReply> => {
     case 'state:start': {
       const [settings, held] = await Promise.all([loadSettings(), loadHeld<HeldReciter>()]);
       await ensureHost();
-      await callEngine({ type: 'engine:start', settings, held });
+      const started = await callEngine({ type: 'engine:start', settings, held });
+      // Paint from what the engine just told us: a tick can race the metadata
+      // and leave the badge grey until the next alarm.
+      await paintBadge(started.states ?? [], settings.paused ? 'paused' : null);
       // Adding and resuming are the same moment, and the gate is applied there.
       return tick();
     }
@@ -251,12 +290,16 @@ export default defineBackground({
 
     // `create` is idempotent per name, so a wake after eviction is harmless.
     void browser.alarms.create(TICK, { periodInMinutes: TICK_MINUTES });
+    void browser.alarms.create(PAINT, { periodInMinutes: PAINT_MINUTES });
     browser.alarms.onAlarm.addListener((alarm) => {
-      if (alarm.name === TICK) void tick();
+      if (alarm.name === TICK) void serial(tick);
+      // A cheap repaint: a torrent that finished thirty seconds ago should not
+      // wear a grey badge until the next half-hour tick.
+      if (alarm.name === PAINT) void serial(repaint);
     });
 
-    browser.runtime.onInstalled.addListener(() => void tick());
-    browser.runtime.onStartup.addListener(() => void tick());
+    browser.runtime.onInstalled.addListener(() => void serial(tick));
+    browser.runtime.onStartup.addListener(() => void serial(tick));
 
     browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       // The engine's own channel belongs to the host; the background relaying it
@@ -266,7 +309,7 @@ export default defineBackground({
       const type = (message as { type?: unknown } | null)?.type;
       if (typeof type !== 'string' || !type.startsWith('state:')) return false;
 
-      void handleUi(message as UiRequest)
+      void serial(() => handleUi(message as UiRequest))
         .then(sendResponse)
         .catch((error: unknown) =>
           sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),

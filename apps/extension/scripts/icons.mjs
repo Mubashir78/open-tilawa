@@ -19,20 +19,48 @@ const INK = '#111111';
 const PAPER = '#ffffff';
 const WAVE = '#1c4d78';
 
+/**
+ * Two candidate marks, both square and both readable at 16 px:
+ *  A — inverted: the letter ت knocked out of an ink tile, one wave underline.
+ *  B — wave: three bars rising, in the wave hue, inside an ink tile.
+ * The tile is ink in both, because a toolbar is light and a white tile vanishes.
+ */
+const variant = process.env.ICON_VARIANT === 'b' ? 'b' : 'a';
+
+const waveBars = (size, pad, box) => {
+  const bar = box * 0.16;
+  const gap = box * 0.1;
+  const base = pad + box * 0.68;
+  const heights = [box * 0.26, box * 0.42, box * 0.56];
+  const start = size / 2 - (bar * 3 + gap * 2) / 2;
+  return heights
+    .map((h, index) => {
+      const x = start + index * (bar + gap);
+      return `<rect x="${x}" y="${base - h}" width="${bar}" height="${h}" rx="${bar / 2}" fill="${PAPER}"/>`;
+    })
+    .join('');
+};
+
 const svg = (size, padded) => {
   const pad = padded ? size * 0.12 : 0;
   const box = size - pad * 2;
   const radius = box * 0.22;
   const font = `600 ${box * 0.62}px "Noto Naskh Arabic", "Segoe UI", system-ui, sans-serif`;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect x="${pad}" y="${pad}" width="${box}" height="${box}" rx="${radius}" fill="${PAPER}"/>
-  <rect x="${pad}" y="${pad}" width="${box}" height="${box}" rx="${radius}" fill="none" stroke="${INK}" stroke-opacity="0.08"/>
-  <text x="${size / 2}" y="${pad + box * 0.5}" fill="${INK}"
-        font-family='"Noto Naskh Arabic","Segoe UI",system-ui,sans-serif' font-size="${box * 0.62}" font-weight="600"
+  const tile = `<rect x="${pad}" y="${pad}" width="${box}" height="${box}" rx="${radius}" fill="${INK}"/>`;
+
+  const mark =
+    variant === 'b'
+      ? waveBars(size, pad, box)
+      : `<text x="${size / 2}" y="${pad + box * 0.47}" fill="${PAPER}"
+        font-family='"Noto Naskh Arabic","Segoe UI",system-ui,sans-serif' font-size="${box * 0.6}" font-weight="600"
         text-anchor="middle" dominant-baseline="central">ت</text>
-  <rect x="${size / 2 - box * 0.17}" y="${pad + box * 0.76}" width="${box * 0.34}" height="${Math.max(2, box * 0.055)}"
-        rx="${box * 0.03}" fill="${WAVE}"/>
+     <rect x="${size / 2 - box * 0.16}" y="${pad + box * 0.74}" width="${box * 0.32}" height="${Math.max(2, box * 0.05)}"
+        rx="${box * 0.025}" fill="${WAVE}"/>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  ${tile}
+  ${mark}
 </svg>`;
 };
 
