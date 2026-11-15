@@ -28,5 +28,6 @@ export default defineConfig({
     // The picker is twelve rows tall; a 400px embedded panel is not a place to
     // choose what to keep for years.
     options_ui: { page: 'options.html', open_in_tab: true },
+    action: { default_title: 'Tilawah Companion' },
   }),
 });

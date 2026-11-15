@@ -1,0 +1,52 @@
+.popup {
+  inline-size: 22rem;
+  padding: 1rem;
+}
+
+.popup h1 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+ul.held {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ul.held li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.state {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.progress {
+  margin-top: 0.4rem;
+  block-size: 4px;
+  background: var(--line);
+}
+
+.progress > span {
+  display: block;
+  block-size: 100%;
+  background: var(--wave-front);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
