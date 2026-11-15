@@ -50,6 +50,7 @@ function Page() {
   const [uploadDraft, setUploadDraft] = useState('1');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fresh, setFresh] = useState<Reciter[]>([]);
+  const [seen, setSeen] = useState<string[]>([]);
   const [prefs, setPrefs] = useState<Prefs>(PREFS_DEFAULTS);
   const [disk, setDisk] = useState<Disk | null>(null);
   const [status, setStatus] = useState<{ text: string; tone: 'idle' | 'error' }>({ text: '', tone: 'idle' });
@@ -78,15 +79,22 @@ function Page() {
         if (!live) return;
 
         const seen = Array.isArray(storedSeen[NEW_SEEN_KEY]) ? (storedSeen[NEW_SEEN_KEY] as string[]) : [];
-        const freshly = pickNew(roster, seen);
-        const nextSeen =
-          seen.length === 0 ? roster.map((row) => row.infohash) : markSeen(seen, freshly.map((row) => row.infohash));
-        await browser.storage.local.set({ [NEW_SEEN_KEY]: nextSeen, [PENDING_KEY]: freshly.length });
-        if (!live) return;
+        // First visit learns the roster silently; a returning visit keeps what is
+        // new on screen until the person dismisses it or leaves the view.
+        if (seen.length === 0) {
+          const baseline = roster.map((row) => row.infohash);
+          await browser.storage.local.set({ [NEW_SEEN_KEY]: baseline, [PENDING_KEY]: 0 });
+          if (!live) return;
+          setSeen(baseline);
+        } else {
+          setSeen(seen);
+          setFresh(pickNew(roster, seen));
+          await browser.storage.local.set({ [PENDING_KEY]: pickNew(roster, seen).length });
+          if (!live) return;
+        }
 
         setPrefs(storedPrefs);
         setRows(roster);
-        setFresh(freshly);
         setHeld(storedHeld);
         setSettings(storedSettings);
         setUploadDraft(String(storedSettings.uploadMbps));
@@ -142,6 +150,21 @@ function Page() {
   useEffect(() => {
     void savePrefs(prefs);
   }, [prefs]);
+
+  const dismissFresh = async () => {
+    if (fresh.length === 0) return;
+    const nextSeen = markSeen(seen, fresh.map((reciter) => reciter.infohash));
+    setSeen(nextSeen);
+    setFresh([]);
+    await browser.storage.local.set({ [NEW_SEEN_KEY]: nextSeen, [PENDING_KEY]: 0 });
+  };
+
+  // Leaving the view counts as seeing it.
+  useEffect(() => {
+    if (view === 'reciters') return;
+    void dismissFresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
   const toggle = (infohash: string) => {
     setSelected((current) => {
@@ -236,6 +259,7 @@ function Page() {
           onRosterOpen={(open) => setPrefs((current) => ({ ...current, rosterOpen: open }))}
           onRetry={() => setAttempt((value) => value + 1)}
           onAdd={addFromStrip}
+          onDismissFresh={() => void dismissFresh()}
           onRemove={(infohash) =>
             setSelected((current) => {
               const next = new Set(current);

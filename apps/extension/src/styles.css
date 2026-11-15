@@ -502,3 +502,22 @@ details.group > summary .meta {
   gap: 0.75rem;
   margin-block: 0.5rem 0.25rem;
 }
+
+.fresh-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fresh-head h2 {
+  flex: 1;
+  margin: 0;
+}
+
+.fresh-head .ghost {
+  min-height: 28px;
+  font-size: 1.25rem;
+  line-height: 1;
+  text-decoration: none;
+  color: var(--muted);
+}

@@ -26,6 +26,7 @@ import { HeldRow } from '@/components/roster-row';
 function Popup() {
   const copy = useMemo(() => copyFor(pickLang(browser.i18n.getUILanguage())), []);
   const lang = copy.dir === 'rtl' ? 'ar' : 'en';
+  const manifest = browser.runtime.getManifest();
 
   const [held, setHeld] = useState<HeldReciter[]>([]);
   const [states, setStates] = useState<HeldState[]>([]);
@@ -85,7 +86,12 @@ function Popup() {
     <main className="popup" dir={copy.dir}>
       <header className="popup-head">
         <img src="/icon/32.png" alt="" width={22} height={22} />
-        <span className="name">{copy.title}</span>
+        <span className="name">
+          {copy.title}{' '}
+          <bdi className="meta" dir="ltr">
+            {manifest.version_name ?? manifest.version}
+          </bdi>
+        </span>
         <button type="button" className="ghost" onClick={() => void togglePause()}>
           {paused ? copy.resumeShort : copy.pauseShort}
         </button>

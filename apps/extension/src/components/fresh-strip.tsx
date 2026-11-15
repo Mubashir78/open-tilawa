@@ -12,16 +12,23 @@ export function FreshStrip({
   rows,
   labels,
   onAdd,
+  onDismiss,
 }: {
   rows: Reciter[];
-  labels: { title: string; add: string; unknown: string };
+  labels: { title: string; add: string; unknown: string; dismiss: string };
   onAdd: (infohash: string) => void;
+  onDismiss: () => void;
 }) {
   if (rows.length === 0) return null;
 
   return (
     <section className="fresh" aria-label={labels.title}>
-      <h2>{labels.title}</h2>
+      <div className="fresh-head">
+        <h2>{labels.title}</h2>
+        <button type="button" className="ghost" onClick={onDismiss} aria-label={labels.dismiss}>
+          ×
+        </button>
+      </div>
       <ul>
         {rows.map((reciter) => (
           <li key={reciter.infohash}>

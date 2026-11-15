@@ -23,7 +23,7 @@ export function AboutView({ copy, lang, version }: { copy: Copy; lang: 'ar' | 'e
 
       <div className="links">
         <a href={`mailto:${BRAND.contact}`}>
-          <ArrowIcon /> {copy.contactUs} — {BRAND.contact}
+          <ArrowIcon /> {copy.contactUs}
         </a>
         <a href={suggestHref}>
           <PlusIcon /> {copy.suggestReciter}

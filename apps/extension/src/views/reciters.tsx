@@ -37,6 +37,7 @@ export function RecitersView({
   onRosterOpen,
   onRetry,
   onAdd,
+  onDismissFresh,
   onRemove,
   onSort,
   onRiwayat,
@@ -59,6 +60,7 @@ export function RecitersView({
   onRosterOpen: (open: boolean) => void;
   onRetry: () => void;
   onAdd: (infohash: string) => void;
+  onDismissFresh: () => void;
   onRemove: (infohash: string) => void;
   onSort: (next: Sort) => void;
   onRiwayat: (next: string[]) => void;
@@ -71,8 +73,9 @@ export function RecitersView({
     <section id="reciters" className="screen" aria-labelledby="reciters-title">
       <FreshStrip
         rows={fresh}
-        labels={{ title: copy.freshTitle, add: copy.add, unknown: copy.unknownSize }}
+        labels={{ title: copy.freshTitle, add: copy.add, unknown: copy.unknownSize, dismiss: copy.dismiss }}
         onAdd={onAdd}
+        onDismiss={onDismissFresh}
       />
 
       <details className="group" open={mineOpen} onToggle={(event) => onMineOpen((event.target as HTMLDetailsElement).open)}>
