@@ -25,5 +25,8 @@ export default defineConfig({
       ...(manifestVersion === 3 ? ['offscreen' as const] : []),
     ],
     host_permissions: ['https://console.tilawah.cc/*', 'https://tilawah.cc/*'],
+    // The picker is twelve rows tall; a 400px embedded panel is not a place to
+    // choose what to keep for years.
+    options_ui: { page: 'options.html', open_in_tab: true },
   }),
 });
