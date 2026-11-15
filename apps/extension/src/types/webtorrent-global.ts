@@ -23,7 +23,7 @@ export type TorrentLike = {
 
 export type WebTorrentClientLike = {
   add: (id: string, opts?: Record<string, unknown>) => TorrentLike;
-  remove: (id: string, opts?: { destroyStore?: boolean }) => void;
+  remove: (id: string, opts?: { destroyStore?: boolean }, cb?: () => void) => void;
   throttleUpload: (rate: number) => void;
   destroy: (cb?: () => void) => void;
 };

@@ -31,13 +31,15 @@
         <p>
           ما دام المتصفح يعمل، يشارك جهازك الأجزاء التي نزّلها مع مستمعي تلاوة.
           ويرى أولئك عنوان IP لجهازك، أو عنوان المرحّل إن مرّ الاتصال به. ويراه
-          المتتبّع أيضًا، كما هو الحال مع أي عميل تورنت.
+          المتتبّع أيضًا، كما هو الحال مع أي عميل تورنت. وملف التورنت يحمل متتبّعات عامة
+          إلى جانب متتبّع تلاوة، فيصل إليها المعرّف المؤقّت نفسه.
         </p>
 
         <h2>ما لا يفعله</h2>
         <ul>
           <li>لا حساب، ولا بريد، ولا كلمة مرور.</li>
-          <li>لا معرّف يُنشأ أو يُرسل، ولا إحصاءات، ولا إعلانات.</li>
+          <li>لا حساب ولا معرّف دائم ولا إحصاءات ولا إعلانات. ولكل عميل تورنت معرّف مؤقّت
+            عشوائي في البروتوكول، يتغيّر كل جلسة ولا يدلّ عليك.</li>
           <li>لا يقرأ صفحاتك، ولا تبويباتك، ولا سجلّ تصفّحك.</li>
           <li>لا يبيع شيئًا، ولا يرسل شيئًا عنك إلى طرف ثالث.</li>
         </ul>
@@ -87,13 +89,16 @@
         <p>
           While the browser runs, your device shares the pieces it holds with Tilawa listeners. Those
           peers see your IP address — or the relay's, if the connection goes through one. The tracker
-          sees it too, as it would for any torrent client.
+          sees it too, as it would for any torrent client. The torrent file also lists public
+          trackers beside Tilawa's, and the same per-session peer id reaches them.
         </p>
 
         <h2>What it never does</h2>
         <ul>
           <li>No account, no email, no password.</li>
-          <li>No identifier is generated or sent. No analytics, no ads.</li>
+          <li>No account, no persistent identifier, no analytics, no ads. Like every torrent
+            client, it sends a random per-session protocol peer id that changes each run and names
+            nobody.</li>
           <li>It does not read your pages, your tabs, or your browsing history.</li>
           <li>Nothing is sold, and nothing about you is sent to a third party.</li>
         </ul>

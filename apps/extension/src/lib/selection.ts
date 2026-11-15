@@ -16,7 +16,7 @@ import { planStorage } from './storage-plan';
 
 export type SelectionPlan = {
   allowed: boolean;
-  reason: 'count' | 'disk' | null;
+  reason: 'count' | 'disk' | 'unknown' | null;
   totalBytes: number;
   missingBytes: number;
 };
@@ -24,6 +24,8 @@ export type SelectionPlan = {
 export function planSelection(input: {
   selectedBytes: number;
   selectedCount: number;
+  /** A selected reciter whose size the catalogue does not know. */
+  unknownSize?: boolean;
   maxReciters: number;
   capBytes: number;
   heldBytes: number;
@@ -33,6 +35,12 @@ export function planSelection(input: {
 
   if (input.selectedCount > input.maxReciters) {
     return { allowed: false, reason: 'count', totalBytes, missingBytes: 0 };
+  }
+
+  // A reciter of unknown size cannot be planned for, and coercing it to zero
+  // would start an unbounded download under a byte cap that says it fits.
+  if (input.unknownSize) {
+    return { allowed: false, reason: 'unknown', totalBytes, missingBytes: 0 };
   }
 
   const disk = planStorage({

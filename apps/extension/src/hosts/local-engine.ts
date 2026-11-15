@@ -8,7 +8,7 @@
  */
 
 import type { HeldReciter } from '@/lib/catalogue';
-import { createEngine, type Engine } from '@/lib/engine';
+import { createEngine, supportsPersistentStore, type Engine } from '@/lib/engine';
 import { readDevice } from '@/lib/device';
 import { isEngineRequest, type EngineReply, type EngineRequest } from '@/lib/messages';
 import { DEFAULTS, loadHeld, loadSettings, type Settings } from '@/lib/settings';
@@ -49,6 +49,12 @@ export async function handleEngine(request: EngineRequest): Promise<EngineReply>
     // The page hosting the engine is also the only context that can read the
     // battery; the background asks rather than measuring in a worker that cannot.
     if (request.type === 'state:device') return { ok: true, device: await readDevice() };
+
+    // A copy that vanishes with the host is worse than no copy; refuse rather
+    // than download into memory.
+    if (!supportsPersistentStore()) {
+      return { ok: false, error: 'this browser cannot keep a copy (no File System Access storage)' };
+    }
 
     // The bundle is fetched once per host, before any torrent work.
     await ensureWebTorrent();

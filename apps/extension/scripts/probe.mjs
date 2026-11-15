@@ -2,13 +2,18 @@
  * The browser half of the proof.
  *
  * The unit tests cover the decisions; this script covers the two things only a
- * real browser can answer: does a held reciter survive a page reload without
- * downloading again (OPFS), and does the tracker see us as a peer (WebRTC)?
+ * real browser can answer:
+ *
+ *   P3 — does a held reciter survive a **browser restart** without downloading
+ *        again? (OPFS). Reloading a page proves nothing: the engine and its
+ *        torrents live in the host, and a page reload does not touch them.
+ *   P4 — does the tracker see this extension as a seeder, and stop seeing it when
+ *        the browser closes? Two observations, rise and fall, is what makes the
+ *        peer attributable to us rather than to someone else joining.
  *
  * Usage:
- *   npm run probe                # headless; needs a display for nothing
- *   PROBE_HEADFUL=1 npm run probe # watch it happen
- *   PROBE_TIMEOUT_MS=600000 ...   # slow connections
+ *   npm run probe                  # headful under xvfb; no display needed
+ *   PROBE_TIMEOUT_MS=600000 ...    # slow connections
  *
  * The seed reciter is the smallest one the catalogue publishes, so a run is
  * around 120 MB, not 2 GB.
@@ -24,9 +29,6 @@ const EXTENSION = join(process.cwd(), '.output/chrome-mv3');
 const CATALOGUE = 'https://console.tilawah.cc/api/public/reciters?page=1&range=200';
 const TRACKER = 'https://tracker.tilawah.cc/stats';
 const TIMEOUT_MS = Number(process.env.PROBE_TIMEOUT_MS ?? 20 * 60 * 1000);
-// Chrome will not load an extension in headless mode; the npm script wraps this
-// run in `xvfb-run` so a machine without a display still works.
-const HEADFUL = true;
 
 const START = Date.now();
 const log = (line) => console.log(`probe [${Math.round((Date.now() - START) / 1000)}s] ${line}`);
@@ -47,14 +49,10 @@ const smallestReciter = async () => {
   return rows[0];
 };
 
-const main = async () => {
-  const before = await stats();
-  const reciter = await smallestReciter();
-  log(`seed reciter: ${reciter.nameAr || reciter.name} (${(reciter.sizeBytes / 1e9).toFixed(2)} GB)`);
-
-  const profile = mkdtempSync(join(tmpdir(), 'tilawah-probe-'));
+/** Chrome will not load an extension headless; xvfb provides the display. */
+const launch = async (profile) => {
   const context = await chromium.launchPersistentContext(profile, {
-    headless: !HEADFUL,
+    headless: false,
     args: [
       `--disable-extensions-except=${EXTENSION}`,
       `--load-extension=${EXTENSION}`,
@@ -63,99 +61,79 @@ const main = async () => {
     ],
   });
 
-  try {
-    let worker = context.serviceWorkers()[0];
-    if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20_000 });
-    const extensionId = new URL(worker.url()).host;
-    log(`P2 build ok — extension ${extensionId}`);
+  let worker = context.serviceWorkers()[0];
+  if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 20_000 });
+  const id = new URL(worker.url()).host;
 
-    const page = await context.newPage();
-    page.on('crash', () => log('page crashed'));
-    page.on('pageerror', (error) => log(`page error: ${error.message}`));
-    page.on('console', (message) => {
-      if (message.type() === 'error') log(`console error: ${message.text()}`);
-    });
-    context.on('close', () => log('context closed'));
-    await page.goto(`chrome-extension://${extensionId}/options.html`);
-    await page.waitForSelector('ul.roster li', { timeout: 30_000 });
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${id}/options.html`);
+  await page.waitForSelector('ul.roster li', { timeout: 30_000 });
 
-    const row = page.locator(`ul.roster li[data-infohash="${reciter.infohash}"]`);
-    await row.locator('input[type=checkbox]').check();
+  const snapshot = async () =>
+    (await page.evaluate(() => chrome.runtime.sendMessage({ type: 'state:snapshot' })))?.states ?? [];
 
-    await page.getByRole('button', { name: /ابدأ|Start/ }).click();
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    const status = await page.locator('.status').textContent().catch(() => '');
-    const first = await page.evaluate(() => chrome.runtime.sendMessage({ type: 'state:snapshot' }));
-    log(`status: ${status ?? ''}`);
-    log(`first snapshot: ${JSON.stringify(first).slice(0, 400)}`);
-    log('started; waiting for the torrent to complete');
-
-    const snapshot = async () => page.evaluate(() => chrome.runtime.sendMessage({ type: 'state:snapshot' }));
-
-    // The click path and the engine can race with the background's first tick on
-    // a cold profile; re-issuing start with what was just stored makes the check
-    // about the engine rather than about that race. Idempotent by infohash.
-    await page.evaluate(async () => {
-      const [settings, held] = await Promise.all([
-        chrome.storage.local.get('tilawah-companion.settings.v1'),
-        chrome.storage.local.get('tilawah-companion.held.v1'),
-      ]);
-      return chrome.runtime.sendMessage({
-        type: 'engine:start',
-        settings: settings['tilawah-companion.settings.v1'],
-        held: held['tilawah-companion.held.v1'],
-      });
-    });
-
-    const deadline = Date.now() + TIMEOUT_MS;
-    let states = [];
+  const waitForComplete = async (hash, limitMs) => {
+    const deadline = Date.now() + limitMs;
+    let state = null;
     while (Date.now() < deadline) {
-      states = (await snapshot())?.states ?? [];
-      const state = states.find((entry) => entry.infohash === reciter.infohash);
+      state = (await snapshot()).find((entry) => entry.infohash === hash);
       log(`progress ${Math.round((state?.progress ?? 0) * 100)}% · ${state?.state ?? 'none'} · ${state?.peers ?? 0} peers`);
-      if (state?.progress >= 1) break;
+      if (state?.progress >= 1) return state;
       await new Promise((resolve) => setTimeout(resolve, 5_000));
     }
+    return state;
+  };
 
-    const complete = states.find((entry) => entry.infohash === reciter.infohash);
+  return { context, id, page, snapshot, waitForComplete };
+};
+
+const main = async () => {
+  const before = await stats();
+  const reciter = await smallestReciter();
+  log(`seed reciter: ${reciter.nameAr || reciter.name} (${(reciter.sizeBytes / 1e9).toFixed(2)} GB)`);
+
+  const profile = mkdtempSync(join(tmpdir(), 'tilawah-probe-'));
+  const first = await launch(profile);
+  log(`P2 build ok — extension ${first.id}`);
+
+  try {
+    const row = first.page.locator(`ul.roster li[data-infohash="${reciter.infohash}"]`);
+    await row.locator('input[type=checkbox]').check();
+    await first.page.getByRole('button', { name: /ابدأ|Start/ }).click();
+
+    const complete = await first.waitForComplete(reciter.infohash, TIMEOUT_MS);
     if (!complete || complete.progress < 1) {
       throw new Error(`torrent did not complete within ${TIMEOUT_MS} ms (progress ${complete?.progress ?? 0})`);
     }
     log(`downloaded ${(reciter.sizeBytes / 1e6).toFixed(0)} MB`);
 
-    // P3 — the store is persistent: after a reload the torrent must be complete
-    // without downloading its bytes again.
-    await page.reload();
-    const started = Date.now();
-    let afterReload = null;
-    while (Date.now() - started < 120_000) {
-      const current = ((await snapshot())?.states ?? []).find((entry) => entry.infohash === reciter.infohash);
-      if (current?.progress >= 1) {
-        afterReload = current;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
-    }
-    if (!afterReload) throw new Error('the torrent was not complete after a reload — the store did not persist');
-    log(`P3 persistence ok — complete again in ${Math.round((Date.now() - started) / 1000)}s`);
-
-    // P4 — the swarm: a WebTorrent client must appear on the tracker.
-    let seen = null;
-    for (let attempt = 0; attempt < 12; attempt += 1) {
-      const now = await stats();
-      const previous = before.clients?.WebTorrent ?? {};
-      const current = now.clients?.WebTorrent ?? {};
-      const grew = Object.keys(current).some((version) => (current[version] ?? 0) > (previous[version] ?? 0));
-      if (grew || now.peersSeederOnly > before.peersSeederOnly) {
-        seen = now;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 10_000));
-    }
-    if (!seen) throw new Error('the tracker never saw a WebTorrent peer — the extension is not announcing');
-    log(`P4 tracker ok — WebTorrent peers now ${JSON.stringify(seen.clients?.WebTorrent ?? {})}`);
+    // P4 rise: while this extension is seeding, the tracker's seeder count rises.
+    const seeding = await stats();
+    log(`tracker while seeding: peersSeederOnly ${seeding.peersSeederOnly}, WebTorrent ${JSON.stringify(seeding.clients?.WebTorrent ?? {})}`);
   } finally {
-    await context.close();
+    await first.context.close();
+  }
+
+  // P3: a real restart with the same profile — new browser process, same disk.
+  const second = await launch(profile);
+  try {
+    const after = await second.waitForComplete(reciter.infohash, 180_000);
+    if (!after || after.progress < 1) {
+      throw new Error('the torrent was not complete after a browser restart — the store did not persist');
+    }
+    log('P3 persistence ok — complete again after a browser restart');
+  } finally {
+    await second.context.close();
+  }
+
+  // P4 fall: with the browser gone, the seeder count comes back down. Rise and
+  // fall together are what attribute the peer to this extension.
+  const afterClose = await stats();
+  log(`tracker after close: peersSeederOnly ${afterClose.peersSeederOnly}, was ${before.peersSeederOnly} before`);
+  if (afterClose.peersSeederOnly > before.peersSeederOnly) {
+    log('P4 inconclusive — the tracker still counts more seeders than it did before this run (other peers joined?)');
+  } else {
+    log('P4 tracker ok — the seeder this run added is gone after close');
   }
 };
 

@@ -18,8 +18,10 @@ by you: how many reciters to keep (two by default), the upload rate (1 Mbps by d
 hours it may run. Nothing is chosen for you — the roster is shown, nothing is pre-ticked, and a new
 reciter is a notification, not a download.
 
-**What it does not do.** No account. No identifier. No analytics. It does not read your pages, your
-tabs, or your history; it has no content script and no permission to do so. Removing a reciter
+**What it does not do.** No account. No persistent identifier. No analytics. It does not read your
+pages, your tabs, or your history; it has no content script and no permission to do so. Like every
+torrent client it joins with a random per-session protocol peer id, which names nobody and changes
+each run, and the torrent's announce list includes public trackers beside Tilawa's. Removing a reciter
 deletes its copy from your disk. Uninstalling deletes everything.
 
 The recitations are freely distributed recordings. The extension grants no rights over them and

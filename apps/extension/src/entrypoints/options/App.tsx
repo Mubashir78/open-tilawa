@@ -4,17 +4,22 @@
  * Nothing is pre-ticked, the totals are live, and the button is disabled with a
  * reason rather than a silent refusal. Removing a reciter is the only destructive
  * action on the page and it is spelled out: the copy goes with it.
+ *
+ * A reciter that has left the catalogue is not silently dropped — it is still on
+ * disk, still seeding, and still costs the person space, so it gets its own row
+ * until they remove it.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { callEngine } from '@/hosts';
 import { formatBytes } from '@/lib/badge';
 import type { HeldReciter, Reciter } from '@/lib/catalogue';
 import { planSelection } from '@/lib/selection';
 import { loadHeld, loadSettings, saveHeld, saveSettings, type Settings } from '@/lib/settings';
+import { parseUploadMbps } from '@/lib/settings';
 import { fetchCatalogue } from '@/lib/sync';
+import { ask } from '@/lib/ui-bridge';
 import { copyFor, pickLang } from '@/ui/i18n';
 
 type Disk = { quota: number; usage: number };
@@ -28,6 +33,7 @@ export default function App() {
   const [failed, setFailed] = useState(false);
   const [held, setHeld] = useState<HeldReciter[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [uploadDraft, setUploadDraft] = useState('1');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [disk, setDisk] = useState<Disk | null>(null);
   const [status, setStatus] = useState<{ text: string; tone: 'idle' | 'error' }>({ text: '', tone: 'idle' });
@@ -53,6 +59,7 @@ export default function App() {
         setRows(roster);
         setHeld(storedHeld);
         setSettings(storedSettings);
+        setUploadDraft(String(storedSettings.uploadMbps));
         setSelected(new Set(storedHeld.map((reciter) => reciter.infohash)));
         if (estimate?.quota) setDisk({ quota: estimate.quota, usage: estimate.usage ?? 0 });
         setLoading(false);
@@ -69,16 +76,35 @@ export default function App() {
     };
   }, [attempt]);
 
+  const catalogueHashes = new Set(rows.map((reciter) => reciter.infohash));
+  const heldHashes = new Set(held.map((reciter) => reciter.infohash));
+
+  /** Still held, no longer published: kept until the person says otherwise. */
+  const unpublished = held.filter((reciter) => !catalogueHashes.has(reciter.infohash));
   const chosen = rows.filter((reciter) => selected.has(reciter.infohash));
+
+  const unknownSize =
+    chosen.some((reciter) => typeof reciter.sizeBytes !== 'number' || reciter.sizeBytes <= 0) ||
+    unpublished.some((reciter) => typeof reciter.sizeBytes !== 'number' || reciter.sizeBytes <= 0);
+
+  // Only bytes that are not already on disk are planned for; counting the held
+  // ones again would refuse a selection that is already there.
+  const addBytes = chosen
+    .filter((reciter) => !heldHashes.has(reciter.infohash))
+    .reduce((sum, reciter) => sum + (reciter.sizeBytes ?? 0), 0);
   const selectedBytes = chosen.reduce((sum, reciter) => sum + (reciter.sizeBytes ?? 0), 0);
-  const heldBytes = held.reduce((sum, reciter) => sum + (reciter.sizeBytes ?? 0), 0);
+  const publishedHeldBytes = held.filter((reciter) => catalogueHashes.has(reciter.infohash)).reduce(
+    (sum, reciter) => sum + (reciter.sizeBytes ?? 0),
+    0,
+  );
 
   const plan = planSelection({
-    selectedBytes,
+    selectedBytes: addBytes,
     selectedCount: chosen.length,
+    unknownSize,
     maxReciters: settings?.maxReciters ?? 2,
     capBytes: disk?.quota ?? Number.POSITIVE_INFINITY,
-    heldBytes,
+    heldBytes: publishedHeldBytes,
     usageBytes: disk?.usage ?? null,
   });
 
@@ -92,29 +118,48 @@ export default function App() {
     setStatus({ text: '', tone: 'idle' });
   };
 
+  const removeUnpublished = async (infohash: string) => {
+    setHeld((current) => current.filter((reciter) => reciter.infohash !== infohash));
+    await ask({ type: 'state:remove', infohash });
+  };
+
   const save = async () => {
     if (!settings || !plan.allowed) return;
     setSaving(true);
     setStatus({ text: copy.saving, tone: 'idle' });
 
     try {
+      const next: HeldReciter[] = [
+        ...unpublished,
+        ...chosen.map((reciter) => ({
+          ...reciter,
+          addedAt:
+            held.find((existing) => existing.infohash === reciter.infohash)?.addedAt ??
+            new Date().toISOString(),
+        })),
+      ];
+
+      // Anything stored but no longer in the next list is removed — including the
+      // ones that left the catalogue, because their row was shown and not kept.
+      const nextHashes = new Set(next.map((reciter) => reciter.infohash));
       for (const reciter of held) {
-        if (selected.has(reciter.infohash)) continue;
-        await callEngine({ type: 'engine:remove', infohash: reciter.infohash });
+        if (nextHashes.has(reciter.infohash)) continue;
+        await ask({ type: 'state:remove', infohash: reciter.infohash });
       }
 
-      const next: HeldReciter[] = chosen.map((reciter) => ({
-        ...reciter,
-        addedAt:
-          held.find((existing) => existing.infohash === reciter.infohash)?.addedAt ??
-          new Date().toISOString(),
-      }));
-
+      const uploadMbps = parseUploadMbps(uploadDraft);
       await saveHeld(next);
-      await saveSettings(settings);
+      const saved = await saveSettings({ ...settings, uploadMbps });
+      setSettings(saved);
+      setUploadDraft(String(saved.uploadMbps));
       setHeld(next);
-      await callEngine({ type: 'engine:start', settings, held: next });
-      setStatus({ text: copy.saved, tone: 'idle' });
+
+      const reply = await ask({ type: 'state:start' });
+      setStatus(
+        reply.ok
+          ? { text: copy.saved, tone: 'idle' }
+          : { text: reply.error ?? copy.failed, tone: 'error' },
+      );
     } catch (error) {
       setStatus({ text: error instanceof Error ? error.message : String(error), tone: 'error' });
     } finally {
@@ -153,7 +198,8 @@ export default function App() {
                 <span>
                   <span className="name">{reciter.nameAr || reciter.name}</span>
                   <span className="meta">
-                    {reciter.riwaya} · {formatBytes(reciter.sizeBytes ?? 0)} ·{' '}
+                    {reciter.riwaya} ·{' '}
+                    {reciter.sizeBytes ? formatBytes(reciter.sizeBytes) : copy.unknownSize} ·{' '}
                     {reciter.complete ? copy.complete : copy.partial}
                   </span>
                 </span>
@@ -162,6 +208,32 @@ export default function App() {
           ))}
         </ul>
         <small>{copy.removeHint}</small>
+
+        {unpublished.length > 0 ? (
+          <>
+            <h2>{copy.unpublishedTitle}</h2>
+            <p className="meta">{copy.unpublishedLede}</p>
+            <ul className="roster">
+              {unpublished.map((reciter) => (
+                <li key={reciter.infohash} data-infohash={reciter.infohash}>
+                  <span className="row">
+                    <span>
+                      <span className="name">{reciter.nameAr || reciter.name}</span>
+                      <span className="meta">{formatBytes(reciter.sizeBytes ?? 0)}</span>
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => void removeUnpublished(reciter.infohash)}
+                  >
+                    {copy.remove}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </section>
 
       {settings ? (
@@ -174,9 +246,7 @@ export default function App() {
               <select
                 id="max-reciters"
                 value={settings.maxReciters}
-                onChange={(event) =>
-                  setSettings({ ...settings, maxReciters: Number(event.target.value) })
-                }
+                onChange={(event) => setSettings({ ...settings, maxReciters: Number(event.target.value) })}
               >
                 {[1, 2, 3, 4].map((value) => (
                   <option key={value} value={value}>
@@ -194,9 +264,10 @@ export default function App() {
                 min={0}
                 max={1000}
                 step={1}
-                value={settings.uploadMbps}
-                onChange={(event) => setSettings({ ...settings, uploadMbps: Number(event.target.value) })}
+                value={uploadDraft}
+                onChange={(event) => setUploadDraft(event.target.value)}
               />
+              <small>{copy.uploadHint}</small>
             </div>
           </div>
 
@@ -248,7 +319,10 @@ export default function App() {
                     max={23}
                     value={settings.schedule.from}
                     onChange={(event) =>
-                      setSettings({ ...settings, schedule: { from: Number(event.target.value), to: settings.schedule!.to } })
+                      setSettings({
+                        ...settings,
+                        schedule: { from: Number(event.target.value), to: settings.schedule!.to },
+                      })
                     }
                   />
                 </div>
@@ -261,7 +335,10 @@ export default function App() {
                     max={23}
                     value={settings.schedule.to}
                     onChange={(event) =>
-                      setSettings({ ...settings, schedule: { from: settings.schedule!.from, to: Number(event.target.value) } })
+                      setSettings({
+                        ...settings,
+                        schedule: { from: settings.schedule!.from, to: Number(event.target.value) },
+                      })
                     }
                   />
                 </div>
@@ -280,7 +357,13 @@ export default function App() {
           {copy.start}
         </button>
         <span className="status" data-tone={status.tone}>
-          {plan.allowed ? status.text : plan.reason === 'count' ? copy.overCount : copy.overDisk}
+          {plan.allowed
+            ? status.text
+            : plan.reason === 'count'
+              ? copy.overCount
+              : plan.reason === 'unknown'
+                ? copy.overUnknown
+                : copy.overDisk}
         </span>
       </div>
     </main>

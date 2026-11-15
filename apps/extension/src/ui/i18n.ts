@@ -38,8 +38,15 @@ const ar = {
   saved: 'تم الحفظ. المشاركة تعمل.',
   overCount: 'أزل قارئًا واحدًا للمتابعة.',
   overDisk: 'لا توجد مساحة كافية في المتصفح.',
+  overUnknown: 'قارئ بلا حجم معروف لا يمكن التخطيط له. أزله للمتابعة.',
   removeHint: 'إزالة قارئ تحذف نسخته من هذا الجهاز.',
   uploadedToday: 'المرفوع اليوم',
+  uploadedTotal: 'المجموع',
+  unknownSize: 'حجم غير معروف',
+  unpublishedTitle: 'تلاوات لم تُنشر بعد الآن',
+  unpublishedLede: 'ما زالت على قرصك وتشارك. أزلها إن أردت.',
+  remove: 'إزالة',
+  uploadHint: 'صفر يوقف الرفع. اتركه فارغًا للحدّ الافتراضي (1).',
 } as const;
 
 const en: Record<keyof typeof ar, string> = {
@@ -68,8 +75,15 @@ const en: Record<keyof typeof ar, string> = {
   saved: 'Saved. Sharing is running.',
   overCount: 'Remove one reciter to continue.',
   overDisk: 'The browser does not have room for that.',
+  overUnknown: 'A reciter of unknown size cannot be planned for. Remove it to continue.',
   removeHint: 'Removing a reciter deletes its copy from this device.',
   uploadedToday: 'Uploaded today',
+  uploadedTotal: 'all time',
+  unknownSize: 'size unknown',
+  unpublishedTitle: 'No longer published',
+  unpublishedLede: 'Still on your disk and still sharing. Remove it if you like.',
+  remove: 'Remove',
+  uploadHint: 'Zero stops uploading. Leave it empty for the default (1).',
 };
 
 export const copyFor = (lang: Lang) => (lang === 'ar' ? ar : (en as unknown as typeof ar));

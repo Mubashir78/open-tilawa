@@ -21,11 +21,23 @@ import type { HeldReciter } from './catalogue';
 export const BYTES_PER_MBPS = 125_000;
 
 /**
- * The torrent carries this as its web seed, but WebTorrent in the browser does
- * not dial it on its own — the site's player adds it explicitly after a stall,
- * and so must the seeder. Without it a quiet swarm means a permanent zero.
+ * Where the audio actually lives. WebTorrent dials a torrent's own `url-list`
+ * (the published `.torrent` carries this), so the engine does not add it again;
+ * it is exported for the capability check and for the docs.
  */
 export const WEB_SEED = 'https://tilawah.cc/media/';
+
+/**
+ * A copy that disappears when the host closes is worse than no copy: the
+ * volunteer gave disk for nothing. WebTorrent falls back to memory when the
+ * File System Access surface is missing, so this is asked before any download.
+ */
+export function supportsPersistentStore(): boolean {
+  const storage = globalThis.navigator?.storage as { getDirectory?: unknown } | undefined;
+  const handle = (globalThis as { FileSystemFileHandle?: { prototype?: { createWritable?: unknown } } })
+    .FileSystemFileHandle;
+  return typeof storage?.getDirectory === 'function' && typeof handle?.prototype?.createWritable === 'function';
+}
 
 const INFO_HASH = /^[0-9a-f]{40}$/i;
 
@@ -47,7 +59,10 @@ export function sanitizeHeld(list: unknown[]): HeldReciter[] {
     if (!entry || typeof entry !== 'object') continue;
     const row = entry as Partial<HeldReciter>;
     const infohash = typeof row.infohash === 'string' ? row.infohash.trim().toLowerCase() : '';
-    if (!INFO_HASH.test(infohash)) continue;
+    if (!INFO_HASH.test(infohash)) {
+      console.warn('tilawah: skipping a held row with no usable infohash', entry);
+      continue;
+    }
     if (seen.has(infohash)) continue;
     seen.add(infohash);
     kept.push({ ...(row as HeldReciter), infohash });
@@ -127,16 +142,6 @@ export function createEngine(
     errors.delete(infohash);
     torrent.on('error', (error) => errors.set(infohash, error as Error));
 
-    const seed = () => {
-      try {
-        torrent.addWebSeed(WEB_SEED);
-      } catch (error) {
-        errors.set(infohash, error);
-      }
-    };
-    if (torrent.ready) seed();
-    else torrent.on('ready', seed);
-
     if (pausedAll) torrent.pause();
   };
 
@@ -144,6 +149,12 @@ export function createEngine(
     async start(held) {
       const live = ensureClient();
       for (const reciter of sanitizeHeld(held)) {
+        // A torrent that failed is retried on the next start, not tombstoned.
+        if (errors.has(reciter.infohash)) {
+          torrents.get(reciter.infohash)?.destroy();
+          torrents.delete(reciter.infohash);
+          errors.delete(reciter.infohash);
+        }
         if (torrents.has(reciter.infohash)) continue;
         attach(reciter.infohash, live.add(torrentUrl(reciter.infohash), { paused: pausedAll }));
       }
@@ -157,11 +168,15 @@ export function createEngine(
 
     async remove(infohash) {
       const hash = infohash.toLowerCase();
-      torrents.get(hash)?.destroy({ destroyStore: true });
+      // One removal path, awaited: `torrent.destroy()` would already remove it
+      // from the client, and a second `client.remove` for the same id rejects.
+      await new Promise<void>((resolve) => {
+        if (!client) return resolve();
+        client.remove(hash, { destroyStore: true }, () => resolve());
+      });
       torrents.delete(hash);
       baselines.delete(hash);
       errors.delete(hash);
-      client?.remove(hash, { destroyStore: true });
     },
 
     snapshot() {

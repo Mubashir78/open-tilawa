@@ -41,3 +41,12 @@ describe('planSelection', () => {
     expect(planSelection({ ...base, selectedCount: 3, selectedBytes: 4e9 }).totalBytes).toBe(4e9);
   });
 });
+
+describe('planSelection — unknown sizes', () => {
+  test('a selection containing a reciter of unknown size is refused, never assumed free', () => {
+    const plan = planSelection({ ...base, unknownSize: true });
+
+    expect(plan.allowed).toBe(false);
+    expect(plan.reason).toBe('unknown');
+  });
+});

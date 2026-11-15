@@ -1,10 +1,14 @@
 /**
- * The background is a router and a clock, not an engine.
+ * The background is the only context that may decide anything.
  *
- * It owns the tick, which asks three questions in order: may we run (the
- * person's rules), what is the engine doing (for the badge), and has the roster
- * changed (for a notification). It never touches a torrent: on Chrome its worker
- * is disposable and the engine lives in an offscreen document.
+ * It owns three things: the clock (may we run?), the counters (how much did we
+ * give?), and the catalogue conversation. It answers every UI request, forwards
+ * engine work to the host (offscreen document on Chrome, itself on Firefox), and
+ * reconciles the host against what is stored — a restarted browser, an evicted
+ * worker, or a torrent that failed all look the same from here: a hash we hold
+ * and a host that does not have it.
+ *
+ * It never touches a torrent directly: on Chrome its worker is disposable.
  */
 
 import { browser } from 'wxt/browser';
@@ -12,8 +16,8 @@ import { browser } from 'wxt/browser';
 import { callEngine, ensureHost } from '@/hosts';
 import { badgeFor, type BadgeColor } from '@/lib/badge';
 import type { HeldReciter } from '@/lib/catalogue';
-import { isEngineRequest, type EngineReply } from '@/lib/messages';
-import { loadHeld, loadSettings } from '@/lib/settings';
+import type { Counters, EngineReply, UiReply, UiRequest } from '@/lib/messages';
+import { loadHeld, loadSettings, saveSettings } from '@/lib/settings';
 import type { HeldState } from '@/lib/state';
 import { fetchCatalogue, planSync, type SyncNotice } from '@/lib/sync';
 import { shouldRun } from '@/lib/limits';
@@ -23,6 +27,7 @@ const TICK_MINUTES = 30;
 const SYNC_EVERY_MS = 24 * 60 * 60 * 1000;
 const SYNC_KEY = 'tilawah-companion.sync.v1';
 const SEEN_KEY = 'tilawah-companion.notices.v1';
+const COUNTERS_KEY = 'tilawah-companion.counters.v1';
 
 const COLOURS: Record<BadgeColor, string> = {
   green: '#2f7d4f',
@@ -38,13 +43,54 @@ const paintBadge = async (states: HeldState[], reason: string | null): Promise<v
     await browser.action.setBadgeText({ text: badge.text });
     await browser.action.setTitle({ title: badge.title });
   } catch (error) {
-    // A browser without an action (rare, and never the ones we ship) must not
-    // break the tick.
     console.warn('badge unavailable', error);
   }
 };
 
 type SyncState = { lastAt: number };
+type CounterState = Counters & { dayKey: string; lastSeen: Record<string, number> };
+
+const todayKey = (): string => new Date().toISOString().slice(0, 10);
+
+/**
+ * Counters live here, not in the engine: an offscreen document cannot reach
+ * `chrome.storage`, and an in-memory baseline dies with the host — which would
+ * quietly report yesterday's uploads as zero.
+ */
+const addCounters = async (states: HeldState[]): Promise<Counters> => {
+  const stored = await browser.storage.local.get(COUNTERS_KEY);
+  const previous = (stored[COUNTERS_KEY] ?? {
+    today: 0,
+    total: 0,
+    dayKey: todayKey(),
+    lastSeen: {},
+  }) as CounterState;
+
+  const dayKey = todayKey();
+  const rolled = previous.dayKey !== dayKey;
+  const lastSeen: Record<string, number> = rolled ? {} : { ...previous.lastSeen };
+
+  let today = rolled ? 0 : previous.today;
+  let total = previous.total;
+
+  for (const state of states) {
+    const delta = Math.max(0, state.uploadedToday - (lastSeen[state.infohash] ?? 0));
+    if (delta === 0) continue;
+    today += delta;
+    total += delta;
+    lastSeen[state.infohash] = state.uploadedToday;
+  }
+
+  const next: CounterState = { today, total, dayKey, lastSeen };
+  await browser.storage.local.set({ [COUNTERS_KEY]: next });
+  return { today, total };
+};
+
+const readCounterState = async (): Promise<CounterState> => {
+  const stored = await browser.storage.local.get(COUNTERS_KEY);
+  const value = (stored[COUNTERS_KEY] ?? { today: 0, total: 0, dayKey: todayKey(), lastSeen: {} }) as CounterState;
+  return value.dayKey === todayKey() ? value : { ...value, today: 0, dayKey: todayKey() };
+};
 
 const syncRoster = async (): Promise<void> => {
   const stored = await browser.storage.local.get([SYNC_KEY, SEEN_KEY]);
@@ -81,7 +127,38 @@ const syncRoster = async (): Promise<void> => {
   });
 };
 
-const tick = async (): Promise<void> => {
+/** Notices the person has not opened the picker for yet. */
+const pendingNotices = async (): Promise<number> => {
+  const stored = await browser.storage.local.get(SEEN_KEY);
+  const seen = Array.isArray(stored[SEEN_KEY]) ? (stored[SEEN_KEY] as string[]) : [];
+  const unopened = Number((await browser.storage.local.get('tilawah-companion.notices-opened.v1'))['tilawah-companion.notices-opened.v1'] ?? 0);
+  return Math.max(0, seen.length - unopened);
+};
+
+const snapshot = async (): Promise<EngineReply> => callEngine({ type: 'engine:snapshot' });
+
+/**
+ * Ask the host for its torrents, and give it anything stored but missing.
+ *
+ * A Chrome offscreen document, a restarted browser and a failed torrent all look
+ * the same from here; `engine:start` is idempotent by hash, so the reconcile is
+ * simply "send the stored list, let the host skip what it already has".
+ */
+const reconcile = async (): Promise<{ states: HeldState[]; error?: string }> => {
+  const held = await loadHeld<HeldReciter>();
+  const current = await snapshot();
+  const states = current.states ?? [];
+
+  if (held.length > 0 && states.length < held.length) {
+    const settings = await loadSettings();
+    const restarted = await callEngine({ type: 'engine:start', settings, held });
+    return { states: restarted.states ?? states, error: restarted.error };
+  }
+
+  return { states, error: current.error };
+};
+
+const tick = async (): Promise<UiReply> => {
   const settings = await loadSettings();
 
   const device = (await callEngine({ type: 'state:device' })).device ?? {
@@ -99,24 +176,70 @@ const tick = async (): Promise<void> => {
     hour: new Date().getHours(),
   });
 
-  const snapshot = await callEngine({ type: 'engine:snapshot' });
-  let states = snapshot.states ?? [];
+  const { states } = await reconcile();
 
-  // A restarted browser, or an evicted worker, leaves the host with no torrents.
-  // The background is the one context that can read storage, so it re-seeds the
-  // engine from there.
-  if (states.length === 0) {
-    const held = await loadHeld<HeldReciter>();
-    if (held.length > 0) {
-      const restarted = await callEngine({ type: 'engine:start', settings, held });
-      states = restarted.states ?? [];
-    }
-  }
+  const applied = await callEngine({ type: gate.run ? 'engine:resume' : 'engine:pause' });
+  const after = applied.states ?? states;
 
-  await callEngine({ type: gate.run ? 'engine:resume' : 'engine:pause' });
-  await paintBadge(gate.run ? states : states.map((state) => ({ ...state, state: 'paused' as const })), gate.reason);
+  await paintBadge(
+    gate.run ? after : after.map((state) => ({ ...state, state: 'paused' as const })),
+    gate.reason,
+  );
 
+  const counters = await addCounters(after);
   await syncRoster();
+
+  return {
+    ok: true,
+    states: after,
+    counters,
+    pending: await pendingNotices(),
+    error: applied.error,
+  };
+};
+
+const handleUi = async (request: UiRequest): Promise<UiReply> => {
+  switch (request.type) {
+    case 'state:start': {
+      const [settings, held] = await Promise.all([loadSettings(), loadHeld<HeldReciter>()]);
+      await ensureHost();
+      await callEngine({ type: 'engine:start', settings, held });
+      // Adding and resuming are the same moment, and the gate is applied there.
+      return tick();
+    }
+    case 'state:pause': {
+      await saveSettings({ paused: true });
+      const reply = await callEngine({ type: 'engine:pause' });
+      await paintBadge(reply.states ?? [], 'paused');
+      return { ok: reply.ok, states: reply.states, error: reply.error };
+    }
+    case 'state:resume': {
+      await saveSettings({ paused: false });
+      return tick();
+    }
+    case 'state:remove': {
+      const reply = await callEngine({ type: 'engine:remove', infohash: request.infohash });
+      return { ok: reply.ok, states: reply.states, error: reply.error };
+    }
+    case 'state:counters': {
+      const counters = await readCounterState();
+      return { ok: true, counters: { today: counters.today, total: counters.total }, pending: await pendingNotices() };
+    }
+    case 'state:snapshot': {
+      const reply = await reconcile();
+      const counters = await readCounterState();
+      return {
+        ok: true,
+        states: reply.states,
+        counters: { today: counters.today, total: counters.total },
+        pending: await pendingNotices(),
+        error: reply.error,
+      };
+    }
+    case 'state:tick':
+    default:
+      return tick();
+  }
 };
 
 export default defineBackground({
@@ -136,25 +259,28 @@ export default defineBackground({
     browser.runtime.onStartup.addListener(() => void tick());
 
     browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      // The engine's own channel belongs to the offscreen document; a background
-      // that also answered it would race the real answer.
-      if (isEngineRequest(message)) return false;
+      // The engine's own channel belongs to the host; the background relaying it
+      // would race the real answer.
+      if (isEngineRequestMessage(message)) return false;
 
-      if (message && typeof message === 'object' && (message as { type?: unknown }).type === 'state:snapshot') {
-        void callEngine({ type: 'engine:snapshot' })
-          .then((reply: EngineReply) => sendResponse({ ok: reply.ok, states: reply.states ?? [], error: reply.error }))
-          .catch((error: unknown) =>
-            sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
-          );
-        return true;
-      }
+      const type = (message as { type?: unknown } | null)?.type;
+      if (typeof type !== 'string' || !type.startsWith('state:')) return false;
 
-      if (message && typeof message === 'object' && (message as { type?: unknown }).type === 'state:tick') {
-        void tick().then(() => sendResponse({ ok: true }));
-        return true;
-      }
-
-      return false;
+      void handleUi(message as UiRequest)
+        .then(sendResponse)
+        .catch((error: unknown) =>
+          sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+        );
+      return true;
     });
   },
 });
+
+function isEngineRequestMessage(value: unknown): boolean {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as { type?: unknown }).type === 'string' &&
+    (value as { type: string }).type.startsWith('engine:')
+  );
+}
