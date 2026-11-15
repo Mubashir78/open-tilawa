@@ -11,16 +11,35 @@ import type { HeldReciter } from '@/lib/catalogue';
 import { createEngine, type Engine } from '@/lib/engine';
 import { readDevice } from '@/lib/device';
 import { isEngineRequest, type EngineReply, type EngineRequest } from '@/lib/messages';
-import { loadHeld, loadSettings } from '@/lib/settings';
+import { DEFAULTS, loadHeld, loadSettings, type Settings } from '@/lib/settings';
+import { ensureWebTorrent } from './web-torrent-bundle';
 
 let engine: Engine | null = null;
+/** Two callers can arrive together (the background's tick and the options page). */
+let creating: Promise<Engine> | null = null;
 
-async function ensureEngine(): Promise<Engine> {
-  if (engine) return engine;
-  const [settings, held] = await Promise.all([loadSettings(), loadHeld<HeldReciter>()]);
-  engine = createEngine(settings);
-  await engine.start(held);
-  return engine;
+async function ensureEngine(settings?: Settings): Promise<Engine> {
+  if (engine) {
+    if (settings) engine.setUploadMbps(settings.uploadMbps);
+    return engine;
+  }
+
+  if (!creating) {
+    // An offscreen document has no `chrome.storage` — only `runtime`. So the
+    // background (or the options page) hands the engine its settings and held
+    // list; reading storage here is the Firefox path, where it is available.
+    creating = loadSettings()
+      .catch(() => DEFAULTS)
+      .then((stored) => {
+        engine = createEngine(settings ?? stored);
+        return engine;
+      })
+      .finally(() => {
+        creating = null;
+      });
+  }
+
+  return creating;
 }
 
 export async function handleEngine(request: EngineRequest): Promise<EngineReply> {
@@ -31,16 +50,27 @@ export async function handleEngine(request: EngineRequest): Promise<EngineReply>
     // battery; the background asks rather than measuring in a worker that cannot.
     if (request.type === 'state:device') return { ok: true, device: await readDevice() };
 
-    const live = await ensureEngine();
+    // The bundle is fetched once per host, before any torrent work.
+    await ensureWebTorrent();
+
+    const settings = request.type === 'engine:start' ? request.settings : undefined;
+    const live = await ensureEngine(settings);
 
     switch (request.type) {
       case 'engine:start': {
-        const [settings, held] = await Promise.all([loadSettings(), loadHeld<HeldReciter>()]);
-        live.pause();
-        if (settings.paused) return { ok: true, states: live.snapshot() };
-        await live.start(held);
-        live.setUploadMbps(settings.uploadMbps);
+        const [storedSettings, storedHeld] = await Promise.all([
+          settings ? Promise.resolve(settings) : loadSettings().catch(() => DEFAULTS),
+          request.held ? Promise.resolve(request.held) : loadHeld<HeldReciter>().catch(() => []),
+        ]);
+        if (storedSettings.paused) {
+          live.pause();
+          return { ok: true, states: live.snapshot() };
+        }
+        // Resume before adding: a torrent created paused and resumed afterwards
+        // connects to its web seed but never requests a piece.
         live.resume();
+        await live.start(storedHeld);
+        live.setUploadMbps(storedSettings.uploadMbps);
         return { ok: true, states: live.snapshot() };
       }
       case 'engine:add':

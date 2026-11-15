@@ -100,7 +100,18 @@ const tick = async (): Promise<void> => {
   });
 
   const snapshot = await callEngine({ type: 'engine:snapshot' });
-  const states = snapshot.states ?? [];
+  let states = snapshot.states ?? [];
+
+  // A restarted browser, or an evicted worker, leaves the host with no torrents.
+  // The background is the one context that can read storage, so it re-seeds the
+  // engine from there.
+  if (states.length === 0) {
+    const held = await loadHeld<HeldReciter>();
+    if (held.length > 0) {
+      const restarted = await callEngine({ type: 'engine:start', settings, held });
+      states = restarted.states ?? [];
+    }
+  }
 
   await callEngine({ type: gate.run ? 'engine:resume' : 'engine:pause' });
   await paintBadge(gate.run ? states : states.map((state) => ({ ...state, state: 'paused' as const })), gate.reason);

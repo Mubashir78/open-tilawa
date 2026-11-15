@@ -12,12 +12,20 @@
  * `throttleUpload` are **bytes per second**, while the setting is Mbps.
  */
 
+import { loadWebTorrent, type TorrentLike, type WebTorrentClientLike } from '@/types/webtorrent-global';
 import type { HeldState } from './state';
 import type { Settings } from './settings';
 import { planStorage } from './storage-plan';
 import type { HeldReciter } from './catalogue';
 
 export const BYTES_PER_MBPS = 125_000;
+
+/**
+ * The torrent carries this as its web seed, but WebTorrent in the browser does
+ * not dial it on its own — the site's player adds it explicitly after a stall,
+ * and so must the seeder. Without it a quiet swarm means a permanent zero.
+ */
+export const WEB_SEED = 'https://tilawah.cc/media/';
 
 const INFO_HASH = /^[0-9a-f]{40}$/i;
 
@@ -84,27 +92,8 @@ export function createEngine(
   settings: Settings,
   options: { onState?: (states: HeldState[]) => void } = {},
 ): Engine {
-  type Torrent = {
-    infoHash: string;
-    progress: number;
-    numPeers: number;
-    uploaded: number;
-    paused: boolean;
-    ready: boolean;
-    destroy: (opts?: { destroyStore?: boolean }) => void;
-    pause: () => void;
-    resume: () => void;
-    on: (event: string, handler: (error: unknown) => void) => void;
-  };
-
-  let client: {
-    add: (id: string, opts: Record<string, unknown>) => Torrent;
-    remove: (id: string, opts?: { destroyStore?: boolean }) => void;
-    throttleUpload: (rate: number) => void;
-    destroy: (cb?: () => void) => void;
-  } | null = null;
-
-  const torrents = new Map<string, Torrent>();
+  let client: WebTorrentClientLike | null = null;
+  const torrents = new Map<string, TorrentLike>();
   const errors = new Map<string, unknown>();
   const baselines = new Map<string, number>();
   let dayKey = new Date().toDateString();
@@ -118,38 +107,52 @@ export function createEngine(
     for (const [hash, torrent] of torrents) baselines.set(hash, torrent.uploaded);
   };
 
-  const ensureClient = async () => {
+  const ensureClient = () => {
     if (client) return client;
-    // Imported here so the pure helpers above stay testable in Node.
-    const { default: WebTorrent } = await import('webtorrent');
+    // The bundle is a global script; loading it is the host's job (offscreen.html).
+    const WebTorrent = loadWebTorrent();
     client = new WebTorrent({
       uploadLimit: uploadMbps * BYTES_PER_MBPS,
       maxConns: 55,
-    }) as unknown as typeof client;
-    return client!;
+    });
+    return client;
   };
 
-  const attach = (torrent: Torrent) => {
-    torrents.set(torrent.infoHash, torrent);
-    baselines.set(torrent.infoHash, torrent.uploaded);
-    errors.delete(torrent.infoHash);
-    torrent.on('error', (error) => errors.set(torrent.infoHash, error));
+  // Keyed by the hash we asked for, not by `torrent.infoHash`: a torrent added
+  // by URL has no metadata yet, and its `infoHash` is undefined until then —
+  // which quietly keyed the map `undefined` and lost the reciter.
+  const attach = (infohash: string, torrent: TorrentLike) => {
+    torrents.set(infohash, torrent);
+    baselines.set(infohash, torrent.uploaded);
+    errors.delete(infohash);
+    torrent.on('error', (error) => errors.set(infohash, error as Error));
+
+    const seed = () => {
+      try {
+        torrent.addWebSeed(WEB_SEED);
+      } catch (error) {
+        errors.set(infohash, error);
+      }
+    };
+    if (torrent.ready) seed();
+    else torrent.on('ready', seed);
+
     if (pausedAll) torrent.pause();
   };
 
   return {
     async start(held) {
-      const live = await ensureClient();
+      const live = ensureClient();
       for (const reciter of sanitizeHeld(held)) {
         if (torrents.has(reciter.infohash)) continue;
-        attach(live.add(torrentUrl(reciter.infohash), { paused: pausedAll }) as unknown as Torrent);
+        attach(reciter.infohash, live.add(torrentUrl(reciter.infohash), { paused: pausedAll }));
       }
     },
 
     async add(reciter) {
-      const live = await ensureClient();
+      const live = ensureClient();
       if (torrents.has(reciter.infohash)) return;
-      attach(live.add(torrentUrl(reciter.infohash), { paused: pausedAll }) as unknown as Torrent);
+      attach(reciter.infohash, live.add(torrentUrl(reciter.infohash), { paused: pausedAll }));
     },
 
     async remove(infohash) {

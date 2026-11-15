@@ -1,4 +1,5 @@
 import type { DeviceState } from './device';
+import type { Settings } from './settings';
 import type { HeldReciter } from './catalogue';
 import type { HeldState } from './state';
 
@@ -10,7 +11,7 @@ import type { HeldState } from './state';
  * shape, so nothing above the host layer knows which browser it is on.
  */
 export type EngineRequest =
-  | { type: 'engine:start' }
+  | { type: 'engine:start'; settings?: Settings; held?: HeldReciter[] }
   | { type: 'engine:add'; reciter: HeldReciter }
   | { type: 'engine:remove'; infohash: string }
   | { type: 'engine:snapshot' }

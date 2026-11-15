@@ -113,7 +113,7 @@ export default function App() {
       await saveHeld(next);
       await saveSettings(settings);
       setHeld(next);
-      await callEngine({ type: 'engine:start' });
+      await callEngine({ type: 'engine:start', settings, held: next });
       setStatus({ text: copy.saved, tone: 'idle' });
     } catch (error) {
       setStatus({ text: error instanceof Error ? error.message : String(error), tone: 'error' });
@@ -143,7 +143,7 @@ export default function App() {
 
         <ul className="roster">
           {rows.map((reciter) => (
-            <li key={reciter.infohash}>
+            <li key={reciter.infohash} data-infohash={reciter.infohash}>
               <label className="row">
                 <input
                   type="checkbox"
