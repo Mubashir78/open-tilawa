@@ -9,15 +9,25 @@
  * dependency, and the same token values as `globals.css`.
  */
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { chromium } from 'playwright';
 
 const SIZES = [16, 32, 48, 96, 128];
-const INK = '#111111';
+
+// The wordmark's own face: IBM Plex Sans Arabic 600, the same family the site
+// loads (apps/web/src/app/fonts.css). Inlined as a data URI because the render
+// page has no network and no system install of it.
+const FONT = `data:font/woff2;base64,${readFileSync(
+  'node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-600-normal.woff2',
+).toString('base64')}`;
+const FACE = `@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:600;src:url(${FONT}) format('woff2');}`;
+// The tile is the site's wave, not ink: ink is the text colour and reads as a
+// hole in a light toolbar. The letter stays paper, the underline a lighter wave.
+const INK = '#1c4d78';
 const PAPER = '#ffffff';
-const WAVE = '#1c4d78';
+const WAVE = '#8fbbe0';
 
 /**
  * Two candidate marks, both square and both readable at 16 px:
@@ -52,10 +62,10 @@ const svg = (size, padded) => {
   const mark =
     variant === 'b'
       ? waveBars(size, pad, box)
-      : `<text x="${size / 2}" y="${pad + box * 0.47}" fill="${PAPER}"
-        font-family='"Noto Naskh Arabic","Segoe UI",system-ui,sans-serif' font-size="${box * 0.6}" font-weight="600"
+      : `<text x="${size / 2}" y="${pad + box * 0.46}" fill="${PAPER}"
+        font-family='"IBM Plex Sans Arabic","Noto Naskh Arabic",system-ui,sans-serif' font-size="${box * 0.66}" font-weight="600"
         text-anchor="middle" dominant-baseline="central">ت</text>
-     <rect x="${size / 2 - box * 0.16}" y="${pad + box * 0.74}" width="${box * 0.32}" height="${Math.max(2, box * 0.05)}"
+     <rect x="${size / 2 - box * 0.16}" y="${pad + box * 0.79}" width="${box * 0.26}" height="${Math.max(2, box * 0.045)}"
         rx="${box * 0.025}" fill="${WAVE}"/>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
@@ -74,7 +84,7 @@ const main = async () => {
   const render = async (size, path, padded = false) => {
     await page.setViewportSize({ width: size, height: size });
     await page.setContent(
-      `<html><body style="margin:0;background:transparent">${svg(size, padded)}</body></html>`,
+      `<html><head><style>${FACE}</style></head><body style="margin:0;background:transparent">${svg(size, padded)}</body></html>`,
     );
     await page.locator('svg').screenshot({ path, omitBackground: true });
     console.log(`icons: ${path} (${size}×${size})`);
