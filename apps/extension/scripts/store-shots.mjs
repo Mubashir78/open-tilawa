@@ -25,6 +25,7 @@ const SURFACE = '#ffffff';
 const WAVE = '#1c4d78';
 
 const FRAMES = [
+  { file: 'welcome', hash: '#/welcome', title: 'مرحبًا', sub: 'شاشة أول تشغيل: ماذا تحفظ، وما تكلفته، وكيف تتوقّف' },
   { file: 'reciters', hash: '#/reciters', title: 'اختر ما تحفظه', sub: 'قائمة كاملة بالقرّاء، وحجم كل تلاوة قبل أن تنزّلها' },
   { file: 'settings', hash: '#/settings', title: 'تحكّم كامل', sub: 'عدد القرّاء، حدّ الرفع، والمواعيد التي تسمح فيها بالمشاركة' },
   { file: 'about', hash: '#/about', title: 'خصوصية بلا حساب', sub: 'لا معرّف دائم، ولا إحصاءات، ولا قراءة لصفحاتك' },

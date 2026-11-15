@@ -20,7 +20,16 @@ import { copyFor, pickLang } from '@/lib/i18n';
 import { NEW_SEEN_KEY, markSeen, pickNew } from '@/lib/new-reciter';
 import { DEFAULT_VIEW, watchView, viewFromHash, type View } from '@/lib/router';
 import { planSelection } from '@/lib/selection';
-import { loadHeld, loadSettings, parseUploadMbps, saveHeld, saveSettings, type Settings } from '@/lib/settings';
+import {
+  SETTINGS_KEY,
+  loadHeld,
+  loadSettings,
+  parseSettings,
+  parseUploadMbps,
+  saveHeld,
+  saveSettings,
+  type Settings,
+} from '@/lib/settings';
 import { filterByRiwaya } from '@/lib/filter';
 import { loadPrefs, savePrefs, DEFAULTS as PREFS_DEFAULTS, type Prefs } from '@/lib/prefs';
 import { sortReciters, type Sort, DEFAULT_SORT } from '@/lib/sort';
@@ -29,6 +38,7 @@ import { ask } from '@/lib/ui-bridge';
 import { Nav } from '@/components/nav';
 import { SummaryBar } from '@/components/summary-bar';
 import { AboutView } from '@/views/about';
+import { WelcomeView } from '@/views/welcome';
 import { RecitersView } from '@/views/reciters';
 import { SettingsView } from '@/views/settings';
 
@@ -41,7 +51,7 @@ function Page() {
   const manifest = browser.runtime.getManifest();
   const version = manifest.version_name ?? manifest.version;
 
-  const [view, setView] = useState<View>(() => viewFromHash(window.location.hash) ?? DEFAULT_VIEW);
+  const [view, setView] = useState<View>(() => viewFromHash(window.location.hash));
   const [rows, setRows] = useState<Reciter[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -55,12 +65,30 @@ function Page() {
   const [disk, setDisk] = useState<Disk | null>(null);
   const [status, setStatus] = useState<{ text: string; tone: 'idle' | 'error' }>({ text: '', tone: 'idle' });
   const [saving, setSaving] = useState(false);
+  /** The pause lives in the background; this page only renders it. */
+  const [paused, setPaused] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   const canReadBattery = typeof (navigator as { getBattery?: unknown }).getBattery === 'function';
   const canReadConnection = 'connection' in navigator;
 
   useEffect(() => watchView(setView), []);
+
+  // The popup can pause or resume while this page is open; follow the store, do
+  // not keep a second copy of the truth.
+  useEffect(() => {
+    const listener = (
+      changes: Record<string, { newValue?: unknown }>,
+      area: string,
+    ) => {
+      if (area !== 'local' || !changes[SETTINGS_KEY]) return;
+      const next = parseSettings(changes[SETTINGS_KEY].newValue);
+      setPaused(next.paused);
+      setSettings((current) => (current ? { ...current, paused: next.paused } : current));
+    };
+    browser.storage.onChanged.addListener(listener);
+    return () => browser.storage.onChanged.removeListener(listener);
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -94,9 +122,12 @@ function Page() {
         }
 
         setPrefs(storedPrefs);
+        // A silent hash means "wherever you were" — first run lands on welcome.
+        if (!window.location.hash) setView(storedPrefs.welcomeSeen ? 'reciters' : 'welcome');
         setRows(roster);
         setHeld(storedHeld);
         setSettings(storedSettings);
+        setPaused(storedSettings.paused);
         setUploadDraft(String(storedSettings.uploadMbps));
         setSelected(new Set(storedHeld.map((reciter) => reciter.infohash)));
         if (estimate?.quota) setDisk({ quota: estimate.quota, usage: estimate.usage ?? 0 });
@@ -213,6 +244,7 @@ function Page() {
       setUploadDraft(String(saved.uploadMbps));
       setHeld(next);
 
+      setPaused(false);
       const reply = await ask({ type: 'state:start' });
       setStatus(reply.ok ? { text: copy.saved, tone: 'idle' } : { text: reply.error ?? copy.failed, tone: 'error' });
     } catch (error) {
@@ -236,10 +268,12 @@ function Page() {
 
       <p className="lede">{copy.lede}</p>
 
+      {view !== 'welcome' ? (
       <Nav
         view={view}
         labels={{ label: copy.navLabel, reciters: copy.navReciters, settings: copy.navSettings, about: copy.navAbout }}
       />
+      ) : null}
 
       {view === 'reciters' ? (
         <RecitersView
@@ -287,17 +321,36 @@ function Page() {
 
       {view === 'about' ? <AboutView copy={copy} lang={lang} version={version} /> : null}
 
-      {view !== 'about' ? (
+      {view === 'welcome' ? (
+        <WelcomeView
+          copy={copy}
+          onDone={() => {
+            setPrefs((current) => ({ ...current, welcomeSeen: true }));
+            setView('reciters');
+            if (!window.location.hash) window.location.hash = '#/reciters';
+          }}
+        />
+      ) : null}
+
+      {view !== 'about' && view !== 'welcome' ? (
         <SummaryBar
           selectedCount={chosen.length}
           selectedBytes={selectedBytes}
           capReciters={capReciters}
           allowed={plan.allowed}
+          running={!paused && held.length > 0}
           refusal={refusal}
           status={status}
           busy={saving}
-          labels={{ selected: copy.selectedLabel, cap: copy.capLabel, start: copy.start }}
-          onStart={() => void save()}
+          labels={{ selected: copy.selectedLabel, cap: copy.capLabel, start: copy.start, pause: copy.pauseCta }}
+          onPrimary={() => {
+            if (!paused && held.length > 0) {
+              setPaused(true);
+              void ask({ type: 'state:pause' });
+              return;
+            }
+            void save();
+          }}
         />
       ) : null}
 

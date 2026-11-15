@@ -599,3 +599,53 @@ details.group > summary .meta {
   text-decoration: none;
   color: var(--muted);
 }
+
+/* ── welcome ────────────────────────────────────────────────────────── */
+
+.welcome {
+  max-inline-size: 34rem;
+  padding-block-start: 3rem;
+}
+
+.welcome-mark {
+  inline-size: 88px;
+  block-size: 88px;
+  border-radius: 20px;
+  margin-block-end: 1.25rem;
+}
+
+.welcome h1 {
+  font-size: 2rem;
+}
+
+.welcome-points {
+  margin: 1.5rem 0;
+  padding-inline-start: 1.1rem;
+  display: grid;
+  gap: 0.5rem;
+  color: var(--ink);
+}
+
+.welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-block-start: 1.75rem;
+}
+
+a.button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 1.6rem;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.button-primary:hover {
+  background: var(--wave-front);
+}

@@ -13,21 +13,24 @@ export function SummaryBar({
   selectedBytes,
   capReciters,
   allowed,
+  running,
   refusal,
   status,
   busy,
   labels,
-  onStart,
+  onPrimary,
 }: {
   selectedCount: number;
   selectedBytes: number;
   capReciters: number;
   allowed: boolean;
+  /** Held reciters exist and the background is not paused. */
+  running: boolean;
   refusal: string;
   status: { text: string; tone: 'idle' | 'error' };
   busy: boolean;
-  labels: { selected: string; cap: string; start: string };
-  onStart: () => void;
+  labels: { selected: string; cap: string; start: string; pause: string };
+  onPrimary: () => void;
 }) {
   return (
     <div className="bar">
@@ -35,8 +38,13 @@ export function SummaryBar({
         {labels.selected}: <bdi>{selectedCount}</bdi> · <bdi>{formatBytes(selectedBytes)}</bdi> /{' '}
         {labels.cap}: <bdi>{capReciters}</bdi>
       </span>
-      <button type="button" className="primary" onClick={onStart} disabled={!allowed || busy}>
-        {labels.start}
+      <button
+        type="button"
+        className="primary"
+        onClick={onPrimary}
+        disabled={busy || (!running && !allowed)}
+      >
+        {running ? labels.pause : labels.start}
       </button>
       <span className="status" data-tone={status.tone}>
         {allowed ? status.text : refusal}

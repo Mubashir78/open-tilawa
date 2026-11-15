@@ -8,11 +8,11 @@
  * than showing a blank page.
  */
 
-export type View = 'reciters' | 'settings' | 'about';
+export type View = 'welcome' | 'reciters' | 'settings' | 'about';
 
-export const VIEWS: View[] = ['reciters', 'settings', 'about'];
+export const VIEWS: View[] = ['welcome', 'reciters', 'settings', 'about'];
 
-export const DEFAULT_VIEW: View = 'reciters';
+export const DEFAULT_VIEW: View = 'welcome';
 
 const isView = (value: string): value is View => (VIEWS as string[]).includes(value);
 

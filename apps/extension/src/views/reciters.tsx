@@ -78,7 +78,16 @@ export function RecitersView({
         onDismiss={onDismissFresh}
       />
 
-      <details className="group" open={mineOpen} onToggle={(event) => onMineOpen((event.target as HTMLDetailsElement).open)}>
+      <details
+        className="group"
+        open={mineOpen}
+        // `toggle` from a nested <details> (the riwaya filter) must not be read as
+        // this group closing — that is what collapsed the roster on an outside click.
+        onToggle={(event) => {
+          if (event.target !== event.currentTarget) return;
+          onMineOpen((event.target as HTMLDetailsElement).open);
+        }}
+      >
         <summary>
           <span className="name">{copy.mineTitle}</span>
           <span className="meta">
@@ -118,7 +127,10 @@ export function RecitersView({
       <details
         className="group"
         open={rosterOpen}
-        onToggle={(event) => onRosterOpen((event.target as HTMLDetailsElement).open)}
+        onToggle={(event) => {
+          if (event.target !== event.currentTarget) return;
+          onRosterOpen((event.target as HTMLDetailsElement).open);
+        }}
       >
         <summary>
           <span className="name">{copy.roster}</span>

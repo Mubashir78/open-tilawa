@@ -21,6 +21,8 @@ export type Prefs = {
   rosterOpen: boolean;
   sort: Sort;
   riwayat: string[];
+  /** First run is once; afterwards the page opens on the roster. */
+  welcomeSeen: boolean;
 };
 
 export const DEFAULTS: Prefs = {
@@ -28,6 +30,7 @@ export const DEFAULTS: Prefs = {
   rosterOpen: true,
   sort: DEFAULT_SORT,
   riwayat: [],
+  welcomeSeen: false,
 };
 
 const SORT_KEYS: SortKey[] = ['name', 'riwaya', 'size', 'new'];
@@ -51,6 +54,7 @@ export function parsePrefs(raw: unknown): Prefs {
     rosterOpen: typeof input.rosterOpen === 'boolean' ? input.rosterOpen : DEFAULTS.rosterOpen,
     sort: { key, dir },
     riwayat,
+    welcomeSeen: typeof input.welcomeSeen === 'boolean' ? input.welcomeSeen : DEFAULTS.welcomeSeen,
   };
 }
 
