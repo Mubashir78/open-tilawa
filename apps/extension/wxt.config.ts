@@ -6,6 +6,10 @@ import { defineConfig } from 'wxt';
 // permission here means changing the audit in the same commit.
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  // `srcDir` is what makes `@/lib/...` mean `src/lib/...`, matching the site's
+  // own alias. Entrypoints move with it (`src/entrypoints/**`).
+  srcDir: 'src',
+  publicDir: 'public',
   manifest: ({ manifestVersion }) => ({
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
