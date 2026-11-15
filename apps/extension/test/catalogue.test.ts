@@ -17,7 +17,7 @@ const row = (over: Record<string, unknown> = {}) => ({
 });
 
 const held = (over: Record<string, unknown> = {}): HeldReciter => ({
-  ...toReciters([row(over)])[0],
+  ...toReciters([row(over)])[0]!,
   addedAt: '2026-11-15T00:00:00Z',
 });
 
@@ -25,15 +25,15 @@ describe('toReciters', () => {
   test('a null surahs manifest means the whole book, not zero', () => {
     const [reciter] = toReciters([row({ surahs: null, fileCount: 114 })]);
 
-    expect(reciter.surahs).toBeNull();
-    expect(reciter.complete).toBe(true);
+    expect(reciter!.surahs).toBeNull();
+    expect(reciter!.complete).toBe(true);
   });
 
   test('a reciter that disappears and returns is never duplicated', () => {
     const once = toReciters([row({ infohash: 'b'.repeat(40), surahs: [1, 2], fileCount: 16 })]);
 
     expect(toReciters([row({ infohash: 'b'.repeat(40), surahs: [1, 2], fileCount: 16 }), row({ infohash: 'b'.repeat(40) })])).toHaveLength(1);
-    expect(diffCatalogue([{ ...once[0], addedAt: '2026-11-15T00:00:00Z' }], once)).toEqual({
+    expect(diffCatalogue([{ ...once[0]!, addedAt: '2026-11-15T00:00:00Z' }], once)).toEqual({
       added: [],
       replaced: [],
       unpublished: [],
@@ -47,8 +47,8 @@ describe('toReciters', () => {
   test('surahs outside the mushaf are filtered, and an empty list is unknown', () => {
     const [reciter] = toReciters([row({ surahs: [1, 115, 0, 2.5, 3] })]);
 
-    expect(reciter.surahs).toEqual([1, 3]);
-    expect(toReciters([row({ surahs: [] })])[0].surahs).toBeNull();
+    expect(reciter!.surahs).toEqual([1, 3]);
+    expect(toReciters([row({ surahs: [] })])[0]!.surahs).toBeNull();
   });
 });
 
@@ -61,8 +61,8 @@ describe('diffCatalogue', () => {
 
     expect(result.added).toHaveLength(0);
     expect(result.replaced).toHaveLength(1);
-    expect(result.replaced[0].from.infohash).toBe('d'.repeat(40));
-    expect(result.replaced[0].to.infohash).toBe('e'.repeat(40));
+    expect(result.replaced[0]!.from.infohash).toBe('d'.repeat(40));
+    expect(result.replaced[0]!.to.infohash).toBe('e'.repeat(40));
   });
 
   test('a held reciter missing from the catalogue is unpublished, not added', () => {
