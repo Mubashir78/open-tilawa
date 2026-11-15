@@ -44,16 +44,12 @@ const main = async () => {
     await page.waitForSelector('ul.roster li', { timeout: 30_000 });
     await shot('view-reciters-ar.png');
 
-    const rows = page.locator('ul.roster li');
-    await rows.nth(0).locator('input[type=checkbox]').check();
-    await shot('view-reciters-selected-ar.png');
-
-    // The riwaya filter, open, over the roster.
-    await page.locator('details.filter > summary').click();
-    await page.locator('details.filter input[type=checkbox]').first().check();
+    // Add two reciters from the catalogue list into "my reciters".
+    const add = page.locator('details.group').nth(1).locator('ul.roster li button.ghost');
+    await add.nth(0).click();
+    await add.nth(1).click();
     await page.waitForTimeout(300);
-    await shot('view-riwaya-filter-ar.png');
-    await page.locator('details.filter > summary').click();
+    await shot('view-reciters-selected-ar.png');
 
     await page.goto(`chrome-extension://${id}/options.html#/settings`);
     await page.waitForSelector('#settings', { timeout: 10_000 });

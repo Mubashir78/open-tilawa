@@ -1,10 +1,14 @@
 /**
- * The roster view: what arrived, what is on offer, and what is still held but no
- * longer published.
+ * The reciters view as two lists, not one.
  *
- * A reciter that left the catalogue keeps a row here until the person removes it.
- * Hiding it would leave bytes on disk with no surface to delete them from, and a
- * seeder still announcing a release nobody lists.
+ * **My reciters** is what this device will hold — the reciters that used to be
+ * ticked rows now live here, with a count and their total size. **The rest** is
+ * everyone else, and adding one moves it up. Each list has its own accordion and
+ * remembers whether it was open, because a person who collapsed the catalogue to
+ * look at their own three reciters should not find it expanded on the next visit.
+ *
+ * A filter narrows "the rest" only: hiding the reciters you already hold behind a
+ * riwaya filter would make the top list look empty for no reason.
  */
 
 import { formatBytes } from '@/lib/badge';
@@ -14,7 +18,7 @@ import type { Sort } from '@/lib/sort';
 import { FreshStrip } from '@/components/fresh-strip';
 import { RiwayaFilter } from '@/components/riwaya-filter';
 import { SortBar } from '@/components/sort-bar';
-import { TrashIcon } from '@/components/icons';
+import { PlusIcon, TrashIcon } from '@/components/icons';
 
 export function RecitersView({
   copy,
@@ -24,14 +28,18 @@ export function RecitersView({
   ordered,
   fresh,
   unpublished,
-  selected,
+  mine,
+  mineOpen,
+  rosterOpen,
   sort,
   riwayat,
-  onRiwayat,
+  onMineOpen,
+  onRosterOpen,
   onRetry,
-  onToggle,
-  onAddFromStrip,
+  onAdd,
+  onRemove,
   onSort,
+  onRiwayat,
   onRemoveUnpublished,
 }: {
   copy: Copy;
@@ -41,87 +49,144 @@ export function RecitersView({
   ordered: Reciter[];
   fresh: Reciter[];
   unpublished: HeldReciter[];
-  selected: Set<string>;
+  /** Selected rows, in roster order. */
+  mine: Reciter[];
+  mineOpen: boolean;
+  rosterOpen: boolean;
   sort: Sort;
   riwayat: string[];
-  onRiwayat: (next: string[]) => void;
+  onMineOpen: (open: boolean) => void;
+  onRosterOpen: (open: boolean) => void;
   onRetry: () => void;
-  onToggle: (infohash: string) => void;
-  onAddFromStrip: (infohash: string) => void;
+  onAdd: (infohash: string) => void;
+  onRemove: (infohash: string) => void;
   onSort: (next: Sort) => void;
+  onRiwayat: (next: string[]) => void;
   onRemoveUnpublished: (infohash: string) => void;
 }) {
+  const mineBytes = mine.reduce((sum, reciter) => sum + (reciter.sizeBytes ?? 0), 0);
+  const available = ordered.filter((reciter) => !mine.some((held) => held.infohash === reciter.infohash));
+
   return (
     <section id="reciters" className="screen" aria-labelledby="reciters-title">
       <FreshStrip
         rows={fresh}
         labels={{ title: copy.freshTitle, add: copy.add, unknown: copy.unknownSize }}
-        onAdd={onAddFromStrip}
+        onAdd={onAdd}
       />
 
-      <h2 id="reciters-title">{copy.roster}</h2>
+      <details className="group" open={mineOpen} onToggle={(event) => onMineOpen((event.target as HTMLDetailsElement).open)}>
+        <summary>
+          <span className="name">{copy.mineTitle}</span>
+          <span className="meta">
+            {mine.length > 0
+              ? `${mine.length} · ${formatBytes(mineBytes)}`
+              : copy.mineEmpty}
+          </span>
+        </summary>
 
-      {loading ? <p className="meta">{copy.loading}</p> : null}
-      {failed ? (
-        <p className="meta">
-          {copy.failed}{' '}
-          <button type="button" className="ghost" onClick={onRetry}>
-            {copy.retry}
-          </button>
-        </p>
-      ) : null}
-      {!loading && !failed && rows.length === 0 ? <p className="meta">{copy.empty}</p> : null}
-
-      {rows.length > 0 ? (
-        <RiwayaFilter
-          rows={rows}
-          selected={riwayat}
-          labels={{ label: copy.filterRiwaya, all: copy.filterAll, count: copy.filterCount }}
-          onChange={onRiwayat}
-        />
-      ) : null}
-
-      {rows.length > 0 ? (
-        <SortBar
-          sort={sort}
-          onChange={onSort}
-          labels={{
-            label: copy.sortBy,
-            name: copy.sortName,
-            riwaya: copy.sortRiwaya,
-            size: copy.sortSize,
-            new: copy.sortNew,
-          }}
-        />
-      ) : null}
-
-      <ul className="roster">
-        {ordered.map((reciter) => (
-          <li key={reciter.infohash} data-infohash={reciter.infohash}>
-            <label className="row">
-              <input
-                type="checkbox"
-                checked={selected.has(reciter.infohash)}
-                onChange={() => onToggle(reciter.infohash)}
-              />
-              <span>
-                <span className="name">
-                  {reciter.nameAr || reciter.name}
-                  {reciter.complete ? null : <span className="tag">{copy.partial}</span>}
+        {mine.length === 0 ? (
+          <p className="meta">{copy.mineLede}</p>
+        ) : (
+          <ul className="roster">
+            {mine.map((reciter) => (
+              <li key={reciter.infohash} data-infohash={reciter.infohash}>
+                <span className="row">
+                  <span>
+                    <span className="name">
+                      {reciter.nameAr || reciter.name}
+                      {reciter.complete ? null : <span className="tag">{copy.partial}</span>}
+                    </span>
+                    <span className="meta">
+                      {reciter.riwaya} ·{' '}
+                      {reciter.sizeBytes ? formatBytes(reciter.sizeBytes) : copy.unknownSize}
+                    </span>
+                  </span>
                 </span>
-                <span className="meta">
-                  {reciter.riwaya} · {reciter.sizeBytes ? formatBytes(reciter.sizeBytes) : copy.unknownSize}
+                <button type="button" className="ghost" onClick={() => onRemove(reciter.infohash)}>
+                  <TrashIcon /> {copy.remove}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+
+      <details
+        className="group"
+        open={rosterOpen}
+        onToggle={(event) => onRosterOpen((event.target as HTMLDetailsElement).open)}
+      >
+        <summary>
+          <span className="name">{copy.roster}</span>
+          <span className="meta">{rows.length}</span>
+        </summary>
+
+        {loading ? <p className="meta">{copy.loading}</p> : null}
+        {failed ? (
+          <p className="meta">
+            {copy.failed}{' '}
+            <button type="button" className="ghost" onClick={onRetry}>
+              {copy.retry}
+            </button>
+          </p>
+        ) : null}
+        {!loading && !failed && rows.length === 0 ? <p className="meta">{copy.empty}</p> : null}
+
+        {rows.length > 0 ? (
+          <div className="roster-tools">
+            <RiwayaFilter
+              rows={rows}
+              selected={riwayat}
+              labels={{ label: copy.filterRiwaya, all: copy.filterAll, count: copy.filterCount }}
+              onChange={onRiwayat}
+            />
+            <SortBar
+              sort={sort}
+              onChange={onSort}
+              labels={{
+                label: copy.sortBy,
+                name: copy.sortName,
+                riwaya: copy.sortRiwaya,
+                size: copy.sortSize,
+                new: copy.sortNew,
+              }}
+            />
+          </div>
+        ) : null}
+
+        <ul className="roster">
+          {available.map((reciter) => (
+            <li key={reciter.infohash} data-infohash={reciter.infohash}>
+              <span className="row">
+                <span>
+                  <span className="name">
+                    {reciter.nameAr || reciter.name}
+                    {reciter.complete ? null : <span className="tag">{copy.partial}</span>}
+                  </span>
+                  <span className="meta">
+                    {reciter.riwaya} ·{' '}
+                    {reciter.sizeBytes ? formatBytes(reciter.sizeBytes) : copy.unknownSize}
+                  </span>
                 </span>
               </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      <small>{copy.removeHint}</small>
+              <button type="button" className="ghost" onClick={() => onAdd(reciter.infohash)}>
+                <PlusIcon /> {copy.add}
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        {available.length === 0 && rows.length > 0 ? <p className="meta">{copy.allHeld}</p> : null}
+        <small>{copy.removeHint}</small>
+      </details>
 
       {unpublished.length > 0 ? (
-        <>
-          <h2 style={{ marginBlockStart: '1.5rem' }}>{copy.unpublishedTitle}</h2>
+        <details className="group" open>
+          <summary>
+            <span className="name">{copy.unpublishedTitle}</span>
+            <span className="meta">{unpublished.length}</span>
+          </summary>
           <p className="meta">{copy.unpublishedLede}</p>
           <ul className="roster">
             {unpublished.map((reciter) => (
@@ -138,7 +203,7 @@ export function RecitersView({
               </li>
             ))}
           </ul>
-        </>
+        </details>
       ) : null}
     </section>
   );

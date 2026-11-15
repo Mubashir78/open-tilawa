@@ -22,6 +22,7 @@ import { DEFAULT_VIEW, watchView, viewFromHash, type View } from '@/lib/router';
 import { planSelection } from '@/lib/selection';
 import { loadHeld, loadSettings, parseUploadMbps, saveHeld, saveSettings, type Settings } from '@/lib/settings';
 import { filterByRiwaya } from '@/lib/filter';
+import { loadPrefs, savePrefs, DEFAULTS as PREFS_DEFAULTS, type Prefs } from '@/lib/prefs';
 import { sortReciters, type Sort, DEFAULT_SORT } from '@/lib/sort';
 import { fetchCatalogue } from '@/lib/sync';
 import { ask } from '@/lib/ui-bridge';
@@ -49,8 +50,7 @@ function Page() {
   const [uploadDraft, setUploadDraft] = useState('1');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fresh, setFresh] = useState<Reciter[]>([]);
-  const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
-  const [riwayat, setRiwayat] = useState<string[]>([]);
+  const [prefs, setPrefs] = useState<Prefs>(PREFS_DEFAULTS);
   const [disk, setDisk] = useState<Disk | null>(null);
   const [status, setStatus] = useState<{ text: string; tone: 'idle' | 'error' }>({ text: '', tone: 'idle' });
   const [saving, setSaving] = useState(false);
@@ -70,10 +70,11 @@ function Page() {
       fetchCatalogue(),
       loadHeld<HeldReciter>(),
       loadSettings(),
+      loadPrefs(),
       browser.storage.local.get(NEW_SEEN_KEY),
       navigator.storage?.estimate?.().catch(() => undefined) ?? Promise.resolve(undefined),
     ]).then(
-      async ([roster, storedHeld, storedSettings, storedSeen, estimate]) => {
+      async ([roster, storedHeld, storedSettings, storedPrefs, storedSeen, estimate]) => {
         if (!live) return;
 
         const seen = Array.isArray(storedSeen[NEW_SEEN_KEY]) ? (storedSeen[NEW_SEEN_KEY] as string[]) : [];
@@ -83,6 +84,7 @@ function Page() {
         await browser.storage.local.set({ [NEW_SEEN_KEY]: nextSeen, [PENDING_KEY]: freshly.length });
         if (!live) return;
 
+        setPrefs(storedPrefs);
         setRows(roster);
         setFresh(freshly);
         setHeld(storedHeld);
@@ -108,7 +110,8 @@ function Page() {
   const heldHashes = new Set(held.map((reciter) => reciter.infohash));
   const unpublished = held.filter((reciter) => !catalogueHashes.has(reciter.infohash));
   const chosen = rows.filter((reciter) => selected.has(reciter.infohash));
-  const ordered = sortReciters(filterByRiwaya(rows, riwayat), sort, lang);
+  const ordered = sortReciters(filterByRiwaya(rows, prefs.riwayat), prefs.sort, lang);
+  const mine = rows.filter((reciter) => selected.has(reciter.infohash));
 
   const unknownSize =
     chosen.some((reciter) => typeof reciter.sizeBytes !== 'number' || reciter.sizeBytes <= 0) ||
@@ -135,6 +138,10 @@ function Page() {
 
   const refusal =
     plan.reason === 'count' ? copy.overCount : plan.reason === 'unknown' ? copy.overUnknown : copy.overDisk;
+
+  useEffect(() => {
+    void savePrefs(prefs);
+  }, [prefs]);
 
   const toggle = (infohash: string) => {
     setSelected((current) => {
@@ -220,14 +227,24 @@ function Page() {
           ordered={ordered}
           fresh={fresh}
           unpublished={unpublished}
-          selected={selected}
-          sort={sort}
-          riwayat={riwayat}
-          onRiwayat={setRiwayat}
+          mine={mine}
+          mineOpen={prefs.mineOpen}
+          rosterOpen={prefs.rosterOpen}
+          sort={prefs.sort}
+          riwayat={prefs.riwayat}
+          onMineOpen={(open) => setPrefs((current) => ({ ...current, mineOpen: open }))}
+          onRosterOpen={(open) => setPrefs((current) => ({ ...current, rosterOpen: open }))}
           onRetry={() => setAttempt((value) => value + 1)}
-          onToggle={toggle}
-          onAddFromStrip={addFromStrip}
-          onSort={setSort}
+          onAdd={addFromStrip}
+          onRemove={(infohash) =>
+            setSelected((current) => {
+              const next = new Set(current);
+              next.delete(infohash);
+              return next;
+            })
+          }
+          onSort={(next) => setPrefs((current) => ({ ...current, sort: next }))}
+          onRiwayat={(next) => setPrefs((current) => ({ ...current, riwayat: next }))}
           onRemoveUnpublished={(infohash) => void removeUnpublished(infohash)}
         />
       ) : null}

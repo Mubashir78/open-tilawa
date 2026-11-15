@@ -465,3 +465,40 @@ label.filter-row {
 label.filter-row span:first-of-type {
   flex: 1;
 }
+
+/* ── collapsible groups ─────────────────────────────────────────────── */
+
+details.group {
+  border-block-start: 1px solid var(--line);
+  margin-block-start: 1.25rem;
+  padding-block-start: 0.25rem;
+}
+
+details.group > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-height: 48px;
+  cursor: pointer;
+  list-style: none;
+}
+
+details.group > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.group > summary .name {
+  font-size: 1.0625rem;
+}
+
+details.group > summary .meta {
+  flex: 1;
+}
+
+.roster-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 0.5rem 0.25rem;
+}
