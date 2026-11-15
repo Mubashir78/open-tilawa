@@ -12,6 +12,8 @@
  */
 
 export type Reciter = {
+  /** Catalogue id; the only ordering signal the public API gives ("newest" is highest). */
+  id?: number;
   infohash: string;
   slug: string;
   name: string;
@@ -63,6 +65,7 @@ export function toReciters(rows: unknown): Reciter[] {
       : [];
 
     list.push({
+      id: typeof row.id === 'number' && Number.isFinite(row.id) ? row.id : undefined,
       infohash,
       slug: text(row.slug),
       name: name || nameAr || infohash.slice(0, 8),

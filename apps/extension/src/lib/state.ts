@@ -12,4 +12,6 @@ export type HeldState = {
   /** 0–1, from WebTorrent's `progress`. */
   progress: number;
   uploadedToday: number;
+  /** Bytes per second while downloading; 0 otherwise. */
+  downloadSpeed?: number;
 };

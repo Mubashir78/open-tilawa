@@ -195,6 +195,7 @@ export function createEngine(
           peers: torrent.numPeers,
           progress: torrent.progress,
           uploadedToday: Math.max(0, torrent.uploaded - (baselines.get(hash) ?? 0)),
+          downloadSpeed: (torrent as { downloadSpeed?: number }).downloadSpeed ?? 0,
         });
       }
       options.onState?.(states);

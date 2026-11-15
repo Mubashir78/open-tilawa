@@ -1,6 +1,6 @@
 {
   "name": "tilawah-companion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Holds the recitations you choose and shares them with Tilawa listeners.",
   "type": "module",
@@ -16,7 +16,9 @@
     "audit": "node scripts/audit-manifest.mjs",
     "test": "vitest run",
     "probe": "node scripts/probe.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "site": "node scripts/build-site.mjs",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

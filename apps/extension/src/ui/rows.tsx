@@ -11,14 +11,16 @@ import type { HeldState } from '@/lib/state';
 const WORDS = {
   ar: {
     queued: 'في الانتظار',
-    downloading: (percent: number) => `جارٍ التنزيل ${percent}%`,
+    downloading: (percent: number, speed: string) =>
+      `جارٍ التنزيل ${percent}%${speed ? ` · ${speed}` : ''}`,
     seeding: (peers: number) => `يشارك · ${peers} ${peers === 1 ? 'قرين' : 'أقران'}`,
     paused: 'متوقف',
     error: 'تعذّر الاتصال',
   },
   en: {
     queued: 'Queued',
-    downloading: (percent: number) => `Downloading ${percent}%`,
+    downloading: (percent: number, speed: string) =>
+      `Downloading ${percent}%${speed ? ` · ${speed}` : ''}`,
     seeding: (peers: number) => `Sharing · ${peers} ${peers === 1 ? 'peer' : 'peers'}`,
     paused: 'Paused',
     error: 'Cannot reach the swarm',
@@ -27,11 +29,17 @@ const WORDS = {
 
 export type Lang = keyof typeof WORDS;
 
+const speed = (bytesPerSecond: number | undefined): string => {
+  const rate = bytesPerSecond ?? 0;
+  if (rate <= 0) return '';
+  return rate >= 1e6 ? `${(rate / 1e6).toFixed(1)} MB/s` : `${Math.round(rate / 1e3)} kB/s`;
+};
+
 export function stateWord(state: HeldState, lang: Lang): string {
   const words = WORDS[lang];
   switch (state.state) {
     case 'downloading':
-      return words.downloading(Math.round(state.progress * 100));
+      return words.downloading(Math.round(state.progress * 100), speed(state.downloadSpeed));
     case 'seeding':
       return words.seeding(state.peers);
     case 'queued':
