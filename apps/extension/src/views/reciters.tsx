@@ -106,7 +106,7 @@ export function RecitersView({
                     </span>
                   </span>
                 </span>
-                <button type="button" className="ghost" onClick={() => onRemove(reciter.infohash)}>
+                <button type="button" className="action" onClick={() => onRemove(reciter.infohash)}>
                   <TrashIcon /> {copy.remove}
                 </button>
               </li>
@@ -129,7 +129,7 @@ export function RecitersView({
         {failed ? (
           <p className="meta">
             {copy.failed}{' '}
-            <button type="button" className="ghost" onClick={onRetry}>
+            <button type="button" className="quiet" onClick={onRetry}>
               {copy.retry}
             </button>
           </p>
@@ -173,7 +173,7 @@ export function RecitersView({
                   </span>
                 </span>
               </span>
-              <button type="button" className="ghost" onClick={() => onAdd(reciter.infohash)}>
+              <button type="button" className="action" onClick={() => onAdd(reciter.infohash)}>
                 <PlusIcon /> {copy.add}
               </button>
             </li>
@@ -200,7 +200,7 @@ export function RecitersView({
                     <span className="meta">{formatBytes(reciter.sizeBytes ?? 0)}</span>
                   </span>
                 </span>
-                <button type="button" className="ghost" onClick={() => onRemoveUnpublished(reciter.infohash)}>
+                <button type="button" className="action" onClick={() => onRemoveUnpublished(reciter.infohash)}>
                   <TrashIcon /> {copy.remove}
                 </button>
               </li>

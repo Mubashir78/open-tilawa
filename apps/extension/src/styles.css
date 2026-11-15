@@ -1,3 +1,28 @@
+/* Cairo, self-hosted in the Arabic subset: three weights, no network at runtime. */
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/cairo-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/cairo-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Cairo';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/cairo-700.woff2') format('woff2');
+}
+
 /*
  * The site's system, not a new one: one ink, one muted, one line, one surface,
  * one wave hue, and dark following the system. Values copied from
@@ -40,7 +65,7 @@ body {
   margin: 0;
   background: var(--surface);
   color: var(--ink);
-  font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', 'Noto Naskh Arabic', sans-serif;
+  font: 15px/1.75 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -223,10 +248,19 @@ ul.roster {
 
 ul.roster li {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem 0;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0;
   border-block-end: 1px solid var(--line);
+}
+
+ul.roster li > .row {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+ul.roster li > button {
+  flex: none;
 }
 
 label.row {
@@ -268,50 +302,90 @@ input[type='checkbox'] {
   inset-inline: 0;
   inset-block-end: 0;
   z-index: 3;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.85rem 1.25rem;
+  gap: 0.35rem 1rem;
+  padding: 0.85rem 1.5rem;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(8px);
   border-block-start: 1px solid var(--line);
 }
 
 .bar .totals {
-  flex: 1;
-  min-inline-size: 12rem;
+  min-inline-size: 0;
   font-size: 0.875rem;
   color: var(--muted);
 }
 
-button.primary {
-  min-height: 44px;
-  padding: 0 1.5rem;
-  border: 0;
-  border-radius: var(--radius);
-  background: var(--ink);
-  color: var(--surface);
+.bar .status {
+  grid-column: 1 / -1;
+}
+
+/* One button shape, three weights. Primary commits, action changes one row,
+   quiet is a link. Nothing underlines except a link inside prose. */
+button.primary,
+button.action,
+button.quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 8px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+button.primary {
+  min-height: 46px;
+  padding: 0 1.6rem;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 0.9375rem;
+}
+
+button.primary:hover:not([disabled]) {
+  background: var(--wave-front);
+  border-color: var(--wave-front);
 }
 
 button.primary[disabled] {
-  opacity: 0.4;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
-button.ghost {
-  min-height: 36px;
+button.action {
+  min-height: 38px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+button.action:hover {
+  border-color: var(--wave-front);
+  color: var(--wave-front);
+}
+
+button.quiet {
+  min-height: 32px;
   padding: 0;
   border: 0;
   background: transparent;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+button.quiet:hover {
   color: var(--ink);
-  font: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
 }
 
 .status {
@@ -500,7 +574,11 @@ details.group > summary .meta {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  margin-block: 0.5rem 0.25rem;
+  margin-block: 0.5rem 0.5rem;
+}
+
+.roster-tools details.filter {
+  margin-block-end: 0;
 }
 
 .fresh-head {

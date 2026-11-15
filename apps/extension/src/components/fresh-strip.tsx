@@ -25,7 +25,7 @@ export function FreshStrip({
     <section className="fresh" aria-label={labels.title}>
       <div className="fresh-head">
         <h2>{labels.title}</h2>
-        <button type="button" className="ghost" onClick={onDismiss} aria-label={labels.dismiss}>
+        <button type="button" className="quiet" onClick={onDismiss} aria-label={labels.dismiss}>
           ×
         </button>
       </div>
@@ -38,7 +38,7 @@ export function FreshStrip({
                 {reciter.riwaya} · {reciter.sizeBytes ? formatBytes(reciter.sizeBytes) : labels.unknown}
               </span>
             </span>
-            <button type="button" className="ghost" onClick={() => onAdd(reciter.infohash)}>
+            <button type="button" className="action" onClick={() => onAdd(reciter.infohash)}>
               <PlusIcon /> {labels.add}
             </button>
           </li>

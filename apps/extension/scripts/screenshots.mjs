@@ -45,7 +45,7 @@ const main = async () => {
     await shot('view-reciters-ar.png');
 
     // Add two reciters from the catalogue list into "my reciters".
-    const add = page.locator('details.group').nth(1).locator('ul.roster li button.ghost');
+    const add = page.locator('details.group').nth(1).locator('ul.roster li button.action');
     await add.nth(0).click();
     await add.nth(1).click();
     await page.waitForTimeout(300);

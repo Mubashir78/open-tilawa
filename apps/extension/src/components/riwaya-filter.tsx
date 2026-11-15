@@ -67,7 +67,7 @@ export function RiwayaFilter({
       <div className="filter-panel" role="group" aria-label={labels.label}>
         <button
           type="button"
-          className="ghost"
+          className="quiet"
           onClick={() => {
             onChange([]);
             if (ref.current) ref.current.open = false;

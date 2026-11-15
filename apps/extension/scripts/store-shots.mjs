@@ -30,16 +30,19 @@ const FRAMES = [
   { file: 'about', hash: '#/about', title: 'خصوصية بلا حساب', sub: 'لا معرّف دائم، ولا إحصاءات، ولا قراءة لصفحاتك' },
 ];
 
+const CAIRO = `data:font/woff2;base64,${readFileSync('public/fonts/cairo-600.woff2').toString('base64')}`;
+
 const card = ({ title, sub, shot }) => `<!doctype html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="utf-8" />
     <style>
+      @font-face { font-family: 'Cairo'; font-weight: 600; src: url(${CAIRO}) format('woff2'); }
       * { box-sizing: border-box; }
       body {
         margin: 0; width: 1280px; height: 800px; padding: 56px 64px;
         background: ${PAPER};
-        font-family: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', system-ui, sans-serif;
+        font-family: 'Cairo', 'Noto Naskh Arabic', system-ui, sans-serif;
         color: ${INK};
         display: grid; grid-template-rows: auto 1fr;
         gap: 28px;
@@ -106,7 +109,7 @@ const main = async () => {
       await page.waitForSelector('.masthead', { timeout: 20_000 });
       if (frame.file === 'reciters') {
         await page.waitForSelector('ul.roster li', { timeout: 20_000 });
-        const add = page.locator('details.group').nth(1).locator('ul.roster li button.ghost');
+        const add = page.locator('details.group').nth(1).locator('ul.roster li button.action');
         await add.nth(0).click();
         await add.nth(1).click();
         await page.waitForTimeout(300);

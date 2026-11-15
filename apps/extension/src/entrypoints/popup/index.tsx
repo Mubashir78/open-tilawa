@@ -92,7 +92,7 @@ function Popup() {
             {manifest.version_name ?? manifest.version}
           </bdi>
         </span>
-        <button type="button" className="ghost" onClick={() => void togglePause()}>
+        <button type="button" className="action" onClick={() => void togglePause()}>
           {paused ? copy.resumeShort : copy.pauseShort}
         </button>
       </header>
