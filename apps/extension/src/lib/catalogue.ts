@@ -108,6 +108,12 @@ export function diffCatalogue(
   return {
     added,
     replaced,
-    unpublished: held.filter((reciter) => !catalogueHashes.has(reciter.infohash)),
+    // A replaced reciter's old hash is, by definition, no longer listed. It is
+    // not "unpublished": it is the same reciter, reported once as a replacement.
+    unpublished: held.filter(
+      (reciter) =>
+        !catalogueHashes.has(reciter.infohash) &&
+        !replaced.some((entry) => entry.from.infohash === reciter.infohash),
+    ),
   };
 }

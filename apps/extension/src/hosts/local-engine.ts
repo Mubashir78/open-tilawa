@@ -9,6 +9,7 @@
 
 import type { HeldReciter } from '@/lib/catalogue';
 import { createEngine, type Engine } from '@/lib/engine';
+import { readDevice } from '@/lib/device';
 import { isEngineRequest, type EngineReply, type EngineRequest } from '@/lib/messages';
 import { loadHeld, loadSettings } from '@/lib/settings';
 
@@ -26,6 +27,10 @@ export async function handleEngine(request: EngineRequest): Promise<EngineReply>
   if (!isEngineRequest(request)) return { ok: false, error: 'unknown request' };
 
   try {
+    // The page hosting the engine is also the only context that can read the
+    // battery; the background asks rather than measuring in a worker that cannot.
+    if (request.type === 'state:device') return { ok: true, device: await readDevice() };
+
     const live = await ensureEngine();
 
     switch (request.type) {

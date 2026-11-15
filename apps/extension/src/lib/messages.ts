@@ -1,3 +1,4 @@
+import type { DeviceState } from './device';
 import type { HeldReciter } from './catalogue';
 import type { HeldState } from './state';
 
@@ -15,14 +16,17 @@ export type EngineRequest =
   | { type: 'engine:snapshot' }
   | { type: 'engine:pause' }
   | { type: 'engine:resume' }
-  | { type: 'engine:upload'; mbps: number };
+  | { type: 'engine:upload'; mbps: number }
+  | { type: 'state:device' };
 
 export type EngineReply = {
   ok: boolean;
   states?: HeldState[];
+  device?: DeviceState;
   error?: string;
 };
 
 export const isEngineRequest = (value: unknown): value is EngineRequest =>
   !!value && typeof value === 'object' && typeof (value as { type?: unknown }).type === 'string' &&
-  (value as { type: string }).type.startsWith('engine:');
+  ['engine:', 'state:'].some((prefix) => (value as { type: string }).type.startsWith(prefix));
+
