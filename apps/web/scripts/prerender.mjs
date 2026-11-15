@@ -176,7 +176,7 @@ function addPage(path, build) {
 
 addPage('/', (locale, copy) => ({
   title:
-    locale === 'ar' ? 'Tilawah - القرآن الكريم ندّاً بندّ' : 'Tilawah - the Quran, closer',
+    locale === 'ar' ? 'Tilawah - القرآن الكريم، أقرب إليك' : 'Tilawah - the Quran, closer',
   description: copy.home.description,
   index: indexable('home'),
   // The app itself is the document: `WebSite` says what the address is, and
