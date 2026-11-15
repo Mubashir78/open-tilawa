@@ -12,6 +12,7 @@ import type { HeldReciter, Reciter } from '@/lib/catalogue';
 import type { Copy } from '@/lib/i18n';
 import type { Sort } from '@/lib/sort';
 import { FreshStrip } from '@/components/fresh-strip';
+import { RiwayaFilter } from '@/components/riwaya-filter';
 import { SortBar } from '@/components/sort-bar';
 import { TrashIcon } from '@/components/icons';
 
@@ -25,6 +26,8 @@ export function RecitersView({
   unpublished,
   selected,
   sort,
+  riwayat,
+  onRiwayat,
   onRetry,
   onToggle,
   onAddFromStrip,
@@ -40,6 +43,8 @@ export function RecitersView({
   unpublished: HeldReciter[];
   selected: Set<string>;
   sort: Sort;
+  riwayat: string[];
+  onRiwayat: (next: string[]) => void;
   onRetry: () => void;
   onToggle: (infohash: string) => void;
   onAddFromStrip: (infohash: string) => void;
@@ -66,6 +71,15 @@ export function RecitersView({
         </p>
       ) : null}
       {!loading && !failed && rows.length === 0 ? <p className="meta">{copy.empty}</p> : null}
+
+      {rows.length > 0 ? (
+        <RiwayaFilter
+          rows={rows}
+          selected={riwayat}
+          labels={{ label: copy.filterRiwaya, all: copy.filterAll, count: copy.filterCount }}
+          onChange={onRiwayat}
+        />
+      ) : null}
 
       {rows.length > 0 ? (
         <SortBar

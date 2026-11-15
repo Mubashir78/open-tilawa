@@ -21,6 +21,7 @@ import { NEW_SEEN_KEY, markSeen, pickNew } from '@/lib/new-reciter';
 import { DEFAULT_VIEW, watchView, viewFromHash, type View } from '@/lib/router';
 import { planSelection } from '@/lib/selection';
 import { loadHeld, loadSettings, parseUploadMbps, saveHeld, saveSettings, type Settings } from '@/lib/settings';
+import { filterByRiwaya } from '@/lib/filter';
 import { sortReciters, type Sort, DEFAULT_SORT } from '@/lib/sort';
 import { fetchCatalogue } from '@/lib/sync';
 import { ask } from '@/lib/ui-bridge';
@@ -49,6 +50,7 @@ function Page() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [fresh, setFresh] = useState<Reciter[]>([]);
   const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
+  const [riwayat, setRiwayat] = useState<string[]>([]);
   const [disk, setDisk] = useState<Disk | null>(null);
   const [status, setStatus] = useState<{ text: string; tone: 'idle' | 'error' }>({ text: '', tone: 'idle' });
   const [saving, setSaving] = useState(false);
@@ -106,7 +108,7 @@ function Page() {
   const heldHashes = new Set(held.map((reciter) => reciter.infohash));
   const unpublished = held.filter((reciter) => !catalogueHashes.has(reciter.infohash));
   const chosen = rows.filter((reciter) => selected.has(reciter.infohash));
-  const ordered = sortReciters(rows, sort, lang);
+  const ordered = sortReciters(filterByRiwaya(rows, riwayat), sort, lang);
 
   const unknownSize =
     chosen.some((reciter) => typeof reciter.sizeBytes !== 'number' || reciter.sizeBytes <= 0) ||
@@ -220,6 +222,8 @@ function Page() {
           unpublished={unpublished}
           selected={selected}
           sort={sort}
+          riwayat={riwayat}
+          onRiwayat={setRiwayat}
           onRetry={() => setAttempt((value) => value + 1)}
           onToggle={toggle}
           onAddFromStrip={addFromStrip}
