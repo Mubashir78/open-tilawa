@@ -48,7 +48,7 @@ small { color: var(--muted); font-size: 0.8125rem; }
 
 section { border-top: 1px solid var(--line); padding-top: 1.25rem; margin-top: 2rem; }
 
-ul.roster { list-style: none; margin: 0; padding: 0; }
+ul.roster { list-style: none; margin: 0; padding: 0 0 4rem; }
 
 ul.roster li {
   display: flex;
