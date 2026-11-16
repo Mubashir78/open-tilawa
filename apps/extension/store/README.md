@@ -21,7 +21,7 @@ first unticked line is the work.
 
 ## Store paperwork
 
-- [ ] Privacy and terms live at `https://adelpro.github.io/open-tilawa/privacy.html` and
+- [ ] Privacy and terms live at `https://adelpro.us.kg/open-tilawa/privacy.html` and
       `/terms.html` (GitHub Pages, workflow `extension-pages.yml`), and both load without JavaScript.
 - [ ] Listing text from `listing-en.md`, Arabic from `listing-ar.md` (reviewed by uslub).
 - [ ] Screenshots: `npm run screenshots` produces 1280×800 PNGs for the picker and the cap refusal.

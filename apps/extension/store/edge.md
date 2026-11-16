@@ -10,7 +10,7 @@ Edge-specific build and no Edge-specific permission.
 | **Short description** (≤132) | `Holds the recitations you choose and shares them with Tilawa listeners while your browser runs.` |
 | **Long description** | `store/listing-en.md` → Long description (Arabic: `store/listing-ar.md`) |
 | **Category** | Productivity |
-| **Privacy policy URL** | `https://adelpro.github.io/open-tilawa/privacy.html` |
+| **Privacy policy URL** | `https://adelpro.us.kg/open-tilawa/privacy.html` |
 | **Support contact** | `contact@tilawah.cc` |
 | **Website** | `https://tilawah.cc` |
 | **Screenshots** (1280×800) | `store/screens/branded/01.png` … `04.png` |

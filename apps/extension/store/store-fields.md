@@ -13,8 +13,8 @@ Both stores: Arabic first, then the English twin. The Arabic below was gated thr
 | **Category** | **Productivity** (Education is the only credible alternative; Productivity describes a background tool) |
 | **Language** | Arabic, then English (submit both listings) |
 | **Detailed description** | `store/listing-en.md` → Long description (Arabic: `store/listing-ar.md`) |
-| **Privacy policy URL** | `https://adelpro.github.io/open-tilawa/privacy.html` |
-| **Terms URL** (if asked) | `https://adelpro.github.io/open-tilawa/terms.html` |
+| **Privacy policy URL** | `https://adelpro.us.kg/open-tilawa/privacy.html` |
+| **Terms URL** (if asked) | `https://adelpro.us.kg/open-tilawa/terms.html` |
 | **Support / contact** | `contact@tilawah.cc` |
 | **Homepage** | `https://tilawah.cc` |
 | **Screenshots** (1280×800) | `store/screens/{welcome,reciters,settings,about}-1280x800.png` |
@@ -67,7 +67,7 @@ Both stores: Arabic first, then the English twin. The Arabic below was gated thr
 | **Description** | `store/listing-en.md` (Arabic: `store/listing-ar.md`) |
 | **Homepage** | `https://tilawah.cc` |
 | **Support email** | `contact@tilawah.cc` |
-| **Privacy policy** | `https://adelpro.github.io/open-tilawa/privacy.html` |
+| **Privacy policy** | `https://adelpro.us.kg/open-tilawa/privacy.html` |
 | **License** | the repository's own license (MIT if `LICENSE` says so) |
 | **Screenshots** | the four 1280×800 cards, same as Chrome |
 | **Icon** | `store/icon-128.png` |

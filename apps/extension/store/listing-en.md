@@ -27,8 +27,8 @@ deletes its copy from your disk. Uninstalling deletes everything.
 The recitations are freely distributed recordings. The extension grants no rights over them and
 claims none.
 
-Privacy policy: https://adelpro.github.io/open-tilawa/privacy.html
-Terms: https://adelpro.github.io/open-tilawa/terms.html
+Privacy policy: https://adelpro.us.kg/open-tilawa/privacy.html
+Terms: https://adelpro.us.kg/open-tilawa/terms.html
 
 ## Single purpose statement (for review)
 

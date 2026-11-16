@@ -23,8 +23,8 @@
 
 التلاوات مسجّلات تُوزَّع على نطاق واسع، والإضافة لا تمنحك حقوقًا فيها ولا تدّعيها.
 
-الخصوصية: https://adelpro.github.io/open-tilawa/privacy.html
-الشروط: https://adelpro.github.io/open-tilawa/terms.html
+الخصوصية: https://adelpro.us.kg/open-tilawa/privacy.html
+الشروط: https://adelpro.us.kg/open-tilawa/terms.html
 
 ## الغرض الواحد (للمراجعة)
 
