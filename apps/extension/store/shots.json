@@ -1,0 +1,34 @@
+{
+  "app": "Tilawah Companion",
+  "template": "paper-and-ink",
+  "structure": "flat",
+  "languages": ["ar-SA"],
+  "sizes": ["mac-1280"],
+  "out": "./screens/cf",
+  "slides": [
+    {
+      "templateSlide": 0,
+      "headline": "القرآن *أقرب* إليك",
+      "subtitle": "يحفظ التلاوات التي تختارها ويشاركها مع المستمعين.",
+      "captures": { "mac": "screenshots/view-reciters-ar.png" }
+    },
+    {
+      "templateSlide": 1,
+      "headline": "*اختر* ما تحفظه",
+      "subtitle": "قائمة كاملة، وحجم كل تلاوة قبل أن تنزّلها.",
+      "captures": { "mac": "screenshots/view-reciters-selected-ar.png" }
+    },
+    {
+      "templateSlide": 2,
+      "headline": "حدودك *بيدك*",
+      "subtitle": "عدد القرّاء، وسرعة الرفع، والمواعيد التي تسمح فيها.",
+      "captures": { "mac": "screenshots/view-settings-ar.png" }
+    },
+    {
+      "templateSlide": 3,
+      "headline": "خصوصية *بلا حساب*",
+      "subtitle": "لا معرّف دائم، ولا إحصاءات، وإزالة قارئ تحذف نسخته.",
+      "captures": { "mac": "screenshots/view-about-ar.png" }
+    }
+  ]
+}

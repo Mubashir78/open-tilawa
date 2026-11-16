@@ -19,7 +19,8 @@
     "screenshots": "node scripts/screenshots.mjs",
     "site": "node scripts/build-site.mjs",
     "icons": "node scripts/icons.mjs",
-    "store-shots": "node scripts/store-shots.mjs"
+    "store-shots": "node scripts/store-shots.mjs",
+    "brand-shots": "node scripts/brand-shots.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

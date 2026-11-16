@@ -1,0 +1,42 @@
+{
+  "app": "Tilawah Companion",
+  "template": "paper-and-ink",
+  "structure": "flat",
+  "files": [
+    {
+      "path": "mac-1280/ar-SA/01.png",
+      "width": 1280,
+      "height": 800,
+      "family": "mac",
+      "lang": "ar-SA",
+      "slide": 1
+    },
+    {
+      "path": "mac-1280/ar-SA/02.png",
+      "width": 1280,
+      "height": 800,
+      "family": "mac",
+      "lang": "ar-SA",
+      "slide": 2
+    },
+    {
+      "path": "mac-1280/ar-SA/03.png",
+      "width": 1280,
+      "height": 800,
+      "family": "mac",
+      "lang": "ar-SA",
+      "slide": 3
+    },
+    {
+      "path": "mac-1280/ar-SA/04.png",
+      "width": 1280,
+      "height": 800,
+      "family": "mac",
+      "lang": "ar-SA",
+      "slide": 4
+    }
+  ],
+  "warnings": [
+    "slide 3 (mac, ar-SA) uses a placeholder screen"
+  ]
+}
