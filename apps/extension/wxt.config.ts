@@ -10,7 +10,7 @@ export default defineConfig({
   // own alias. Entrypoints move with it (`src/entrypoints/**`).
   srcDir: 'src',
   publicDir: 'public',
-  manifest: ({ manifestVersion }) => ({
+  manifest: ({ browser, manifestVersion }) => ({
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
     short_name: 'Tilawah',
@@ -30,6 +30,19 @@ export default defineConfig({
     // The picker is twelve rows tall; a 400px embedded panel is not a place to
     // choose what to keep for years.
     options_ui: { page: 'options.html', open_in_tab: true },
+    // Firefox 140+ requires an explicit data-collection declaration. The
+    // extension collects nothing, so `none` is the honest answer — and it is
+    // the value AMO validates for a listing to be publishable.
+    ...(browser === 'firefox'
+      ? {
+          browser_specific_settings: {
+            gecko: {
+              id: 'tilawah-companion@tilawah.cc',
+              data_collection_permissions: { required: ['none'], optional: [] },
+            },
+          },
+        }
+      : {}),
     action: { default_title: 'Tilawah Companion' },
   }),
 });
