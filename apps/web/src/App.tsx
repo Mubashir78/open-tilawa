@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import AboutPage from './app/about-page';
+import ExtensionPage from './app/extension-page';
 import SeedPage from './app/seed-page';
 import RecitersPage from './app/reciters-page';
 import ReciterPage from './app/reciter-page';
@@ -330,6 +331,8 @@ export default function App() {
           <AboutPage />
         ) : route.name === 'seed' ? (
           <SeedPage />
+        ) : route.name === 'extension' ? (
+          <ExtensionPage />
         ) : route.name === 'privacy' ? (
           <PrivacyPage />
         ) : route.name === 'notFound' || deepLinkMissing ? (

@@ -68,6 +68,7 @@ export const ROUTE_TABLE: readonly RouteRow[] = [
   { name: 'about', pattern: '/about', index: true, sitemap: true, prerender: true },
   { name: 'privacy', pattern: '/privacy', index: true, sitemap: true, prerender: true },
   { name: 'seed', pattern: '/seed', index: true, sitemap: true, prerender: true },
+  { name: 'extension', pattern: '/extension', index: true, sitemap: true, prerender: true },
   { name: 'account', pattern: '/account', index: false, sitemap: false, prerender: false },
   { name: 'settings', pattern: '/settings', index: false, sitemap: false, prerender: false },
   { name: 'favorites', pattern: '/favorites', index: false, sitemap: false, prerender: false },

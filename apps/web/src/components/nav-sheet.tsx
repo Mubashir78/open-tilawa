@@ -30,6 +30,7 @@ export default function NavSheet({
     { name: 'home', label: t.routes.listen, icon: <Icon name="house" /> },
     { name: 'reciters', label: t.routes.reciters, icon: <Icon name="headphones" /> },
     { name: 'seed', label: t.routes.seed, icon: <Icon name="server" /> },
+    { name: 'extension', label: t.routes.extension, icon: <Icon name="download" /> },
     { name: 'settings', label: t.routes.settings, icon: <Icon name="gear" /> },
     { label: t.account.title, icon: <Icon name="user" />, action: onOpenAccount },
     { name: 'about', label: t.routes.about, icon: <Icon name="info" /> },
