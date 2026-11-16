@@ -258,6 +258,17 @@ addPage('/privacy', (_locale, copy) => ({
     .join('')}</ul>`,
 }));
 
+addPage('/extension', (_locale, copy) => {
+  const page = copy.extensionPage;
+  return {
+    title: `${page.title} - Tilawah`,
+    description: page.lede,
+    body: `<h1>${escape(page.title)}</h1><p>${escape(page.lede)}</p><ul>${page.points
+      .map((point) => `<li>${escape(point)}</li>`)
+      .join('')}</ul><p>${escape(page.note)}</p>`,
+  };
+});
+
 addPage('/seed', (_locale, copy) => {
   const page = copy.seedPage;
   return {
