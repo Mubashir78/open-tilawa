@@ -18,10 +18,12 @@ export function ensureWebTorrent(): Promise<void> {
   if (loading) return loading;
 
   loading = (async () => {
-    const url = new URL('/webtorrent.min.js', location.origin).href;
-
-    // `@vite-ignore` keeps Vite from rewriting the specifier at build time.
-    const mod = (await import(/* @vite-ignore */ url)) as { default?: unknown } | undefined;
+    // A literal, not a variable: AMO's validator reads `import(variable)` as an
+    // unsafe dynamic import, and a literal absolute path resolves to the
+    // extension root in every context that runs this (offscreen document,
+    // Firefox background page). `@vite-ignore` stops the bundler resolving it.
+    // @ts-expect-error the specifier only exists at runtime, inside the package.
+    const mod = (await import(/* @vite-ignore */ '/webtorrent.min.js')) as { default?: unknown } | undefined;
     const ctor = mod?.default ?? mod;
     if (typeof ctor !== 'function') throw new Error('the WebTorrent bundle did not export a constructor');
     globalThis.WebTorrent = ctor as NonNullable<typeof globalThis.WebTorrent>;
