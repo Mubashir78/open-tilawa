@@ -1,0 +1,43 @@
+/*
+ * Two documents, one stylesheet, no JavaScript. The stores only need a page that
+ * loads and reads; the person needs something they can finish.
+ */
+:root {
+  --ink: #111111;
+  --muted: #6b6b6b;
+  --line: #e8e8e8;
+  --surface: #ffffff;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f2f2f2;
+    --muted: #9a9a9a;
+    --line: #262626;
+    --surface: #19191a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: 17px/1.7 system-ui, -apple-system, 'Segoe UI', 'Noto Naskh Arabic', sans-serif;
+}
+
+main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+
+h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 0.5rem; font-weight: 600; }
+h2 { font-size: 1.125rem; margin: 2rem 0 0.5rem; font-weight: 600; }
+p { margin: 0 0 0.9rem; }
+ul { margin: 0 0 0.9rem; padding-inline-start: 1.25rem; }
+li { margin-bottom: 0.35rem; }
+
+.lede { color: var(--muted); font-size: 1.0625rem; }
+.foot { color: var(--muted); font-size: 0.9375rem; margin-top: 2rem; }
+a { color: inherit; }
+
+hr { border: 0; border-top: 1px solid var(--line); margin: 3.5rem 0; }

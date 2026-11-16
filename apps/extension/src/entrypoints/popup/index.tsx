@@ -1,0 +1,164 @@
+/**
+ * The popup: a status card, not a second options page.
+ *
+ * It answers "is it working, how much has it given, and where do I change it" in
+ * that order. Everything comes from the background, which owns the gate and the
+ * counters — a popup that asked the engine directly would be a second source of
+ * truth for "is it running".
+ */
+
+import { StrictMode, useEffect, useMemo, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { browser } from 'wxt/browser';
+
+import '@/styles.css';
+import './popup.css';
+
+import { formatBytes } from '@/lib/badge';
+import type { HeldReciter } from '@/lib/catalogue';
+import { copyFor, pickLang } from '@/lib/i18n';
+import type { Counters } from '@/lib/messages';
+import { loadHeld, loadSettings } from '@/lib/settings';
+import type { HeldState } from '@/lib/state';
+import { ask } from '@/lib/ui-bridge';
+import { HeldRow } from '@/components/roster-row';
+
+function Popup() {
+  const copy = useMemo(() => copyFor(pickLang(browser.i18n.getUILanguage())), []);
+  const lang = copy.dir === 'rtl' ? 'ar' : 'en';
+  const manifest = browser.runtime.getManifest();
+
+  const [held, setHeld] = useState<HeldReciter[]>([]);
+  const [states, setStates] = useState<HeldState[]>([]);
+  const [counters, setCounters] = useState<Counters>({ today: 0, total: 0 });
+  const [pending, setPending] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+
+    const read = async () => {
+      const [roster, settings, reply] = await Promise.all([
+        loadHeld<HeldReciter>(),
+        loadSettings(),
+        ask({ type: 'state:snapshot' }),
+      ]);
+      if (!live) return;
+      setHeld(roster);
+      setStates(reply.states ?? []);
+      setCounters(reply.counters ?? { today: 0, total: 0 });
+      setPending(reply.pending ?? 0);
+      setPaused(settings.paused);
+    };
+
+    void read();
+    const timer = setInterval(() => void read(), 5000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const togglePause = async () => {
+    const next = !paused;
+    setPaused(next);
+    await ask({ type: next ? 'state:pause' : 'state:resume' });
+  };
+
+  const byHash = new Map(states.map((state) => [state.infohash, state]));
+  const seeding = states.filter((state) => state.state === 'seeding').length;
+  const peers = states.reduce((sum, state) => sum + state.peers, 0);
+
+  const headline = paused
+    ? copy.pausedHeadline
+    : seeding > 0
+      ? copy.seedingHeadline.replace('{n}', String(seeding)).replace('{p}', String(peers))
+      : states.length > 0
+        ? copy.workingHeadline
+        : copy.idleHeadline;
+
+  const open = (hash: string) => {
+    void browser.tabs.create({ url: browser.runtime.getURL(`/options.html${hash}`) });
+    window.close();
+  };
+
+  return (
+    <main className="popup" dir={copy.dir}>
+      <header className="popup-head">
+        <img src="/icon/32.png" alt="" width={22} height={22} />
+        <span className="name">
+          {copy.title}{' '}
+          <bdi className="meta" dir="ltr">
+            {manifest.version_name ?? manifest.version}
+          </bdi>
+        </span>
+        <button type="button" className="action" onClick={() => void togglePause()}>
+          {paused ? copy.resumeShort : copy.pauseShort}
+        </button>
+      </header>
+
+      <p className="headline" data-paused={paused}>
+        {headline}
+      </p>
+
+      {held.length === 0 ? (
+        <p className="empty">{copy.lede}</p>
+      ) : (
+        <ul className="held">
+          {held.map((reciter) => {
+            const state = byHash.get(reciter.infohash) ?? {
+              infohash: reciter.infohash,
+              state: 'queued' as const,
+              peers: 0,
+              progress: 0,
+              uploadedToday: 0,
+            };
+            return (
+              <HeldRow
+                key={reciter.infohash}
+                name={reciter.nameAr || reciter.name}
+                size={formatBytes(reciter.sizeBytes ?? 0)}
+                state={state}
+                lang={lang}
+              />
+            );
+          })}
+        </ul>
+      )}
+
+      <dl className="counters">
+        <div>
+          <dt>{copy.uploadedToday}</dt>
+          <dd>
+            <bdi>{formatBytes(counters.today)}</bdi>
+          </dd>
+        </div>
+        <div>
+          <dt>{copy.uploadedTotal}</dt>
+          <dd>
+            <bdi>{formatBytes(counters.total)}</bdi>
+          </dd>
+        </div>
+      </dl>
+
+      <nav className="popup-links">
+        <button type="button" className="link" onClick={() => open('#/reciters')}>
+          {copy.navReciters}
+          {pending > 0 ? <span className="pill">{pending}</span> : null}
+        </button>
+        <button type="button" className="link" onClick={() => open('#/settings')}>
+          {copy.navSettings}
+        </button>
+        <button type="button" className="link" onClick={() => open('#/about')}>
+          {copy.navAbout}
+        </button>
+      </nav>
+    </main>
+  );
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Popup />
+  </StrictMode>,
+);

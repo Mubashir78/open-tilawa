@@ -1,0 +1,42 @@
+{
+  "name": "tilawah-companion",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Holds the recitations you choose and shares them with Tilawa listeners.",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare",
+    "audit": "node scripts/audit-manifest.mjs",
+    "test": "vitest run",
+    "probe": "node scripts/probe.mjs",
+    "screenshots": "node scripts/screenshots.mjs",
+    "site": "node scripts/build-site.mjs",
+    "icons": "node scripts/icons.mjs",
+    "store-shots": "node scripts/store-shots.mjs",
+    "brand-shots": "node scripts/brand-shots.mjs"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@fontsource/cairo": "^5.3.0",
+    "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.1.5",
+    "playwright": "^1.65.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0",
+    "web-ext": "^10.5.0",
+    "wxt": "^0.21.5"
+  }
+}
