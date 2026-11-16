@@ -120,12 +120,42 @@ const main = async () => {
       }
 
       await page.addStyleTag({
-        content: '*::-webkit-scrollbar{display:none!important} html{scrollbar-width:none}',
+        content:
+          'html{overflow:hidden!important;scrollbar-width:none!important}' +
+          '*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}',
       });
-      const shot = await page.screenshot({ type: 'png' });
+      const shot = await page.screenshot({ type: 'png', animations: 'disabled' });
       await composer.setContent(card({ ...frame, shot: shot.toString('base64') }), { waitUntil: 'load' });
       await composer.evaluate(() => document.fonts.ready);
       const name = `${frame.file}-1280x800.png`;
+      await composer.screenshot({ path: join(OUT, name) });
+      console.log(`store-shots: ${name}`);
+    }
+
+    // Promo tile (440×280, Chrome small promo + AMO) and marquee (1400×560, optional).
+    const banner = (width, height, size) => `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>
+      @font-face{font-family:'Cairo';font-weight:600;src:url(${CAIRO}) format('woff2')}
+      *{box-sizing:border-box}
+      body{margin:0;width:${width}px;height:${height}px;background:${INK};color:${PAPER};
+        font-family:'Cairo',system-ui,sans-serif;display:grid;place-items:center;position:relative;overflow:hidden}
+      .wave{position:absolute;inset-block-end:-40%;inset-inline-start:-10%;width:80%;height:80%;
+        border-radius:50%;background:${WAVE};opacity:.55}
+      .inner{position:relative;display:flex;align-items:center;gap:${Math.round(size * 0.28)}px;padding:0 ${Math.round(size * 0.35)}px}
+      img{width:${size}px;height:${size}px;border-radius:${Math.round(size * 0.22)}px;background:${WAVE}}
+      h1{margin:0;font-size:${Math.round(size * 0.44)}px;line-height:1.15}
+      p{margin:${Math.round(size * 0.1)}px 0 0;font-size:${Math.round(size * 0.2)}px;color:#c9d3dc}
+    </style></head><body><div class="wave"></div><div class="inner">
+      <img src="data:image/png;base64,${readFileSync('store/icon-128.png').toString('base64')}" alt="">
+      <div><h1>رفيق تلاوة</h1><p>القرآن أقرب إليك</p></div>
+    </div></body></html>`;
+
+    for (const [name, width, height, size] of [
+      ['promo-440x280.png', 440, 280, 96],
+      ['marquee-1400x560.png', 1400, 560, 180],
+    ]) {
+      await composer.setViewportSize({ width, height });
+      await composer.setContent(banner(width, height, size), { waitUntil: 'load' });
+      await composer.evaluate(() => document.fonts.ready);
       await composer.screenshot({ path: join(OUT, name) });
       console.log(`store-shots: ${name}`);
     }
