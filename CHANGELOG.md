@@ -1,5 +1,40 @@
 # Changelog
 
+## extension 0.2.0 — 2026-11-16
+
+New app. Version: **extension 0.2.0**. Not deployed by the compose stack; it ships
+to the Chrome Web Store and Firefox AMO from a zip.
+
+### Added
+
+- **A browser that seeds instead of downloading.** `apps/extension` holds the
+  recitations a volunteer chooses and shares them with Tilawa listeners over
+  WebRTC. Chrome MV3 runs the engine in an offscreen document (`reasons:
+  ['WEB_RTC']`, no lifetime limit); Firefox MV2 runs it in a persistent
+  background page. The background owns the clock — a 30-minute tick applies the
+  battery/metered/schedule gate, a 1-minute tick repaints the badge, and a daily
+  diff of the public catalogue raises one grouped notification, never an
+  auto-download.
+- **Three views, one page.** Reciters split into `قائمتي` and the catalogue, each
+  a collapsible list whose open state is remembered; a riwaya multi-select and
+  console-style sortable headers narrow it. Settings only show the pause rules
+  the browser can actually measure. About carries privacy, terms, `contact@`
+  and a prefilled "suggest a reciter" mailto.
+- **Proof, not a demo.** `npm run probe` downloads the smallest recitation (118 MB),
+  closes the browser, relaunches with the same profile and asserts the torrent is
+  still complete, then reads `tracker.tilawah.cc` before, during and after to show
+  the seeder it added is gone. 73 unit tests cover the decisions; `npm run audit`
+  fails the build if the manifest gains a permission.
+
+### Notes
+
+- Host permissions are two: the catalogue at `console.tilawah.cc` and the torrent
+  and media at `tilawah.cc`. Store links in `src/constants/brand.ts` are empty
+  until a listing exists.
+- Firefox has not been run on hardware yet — the ten-minute idle test (`P1` in
+  `apps/extension/docs/PROBES.md`) gates the AMO submission.
+- Spec and plan live in the git-ignored `docs/superpowers/` folder.
+
 ## web 1.13.39 — 2026-11-15
 
 Web release. App version: **web 1.13.39**.
