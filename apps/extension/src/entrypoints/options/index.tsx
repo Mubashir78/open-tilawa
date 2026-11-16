@@ -115,9 +115,16 @@ function Page() {
           if (!live) return;
           setSeen(baseline);
         } else {
-          setSeen(seen);
-          setFresh(pickNew(roster, seen));
-          await browser.storage.local.set({ [PENDING_KEY]: pickNew(roster, seen).length });
+          const freshly = pickNew(roster, seen);
+          setSeen(markSeen(seen, freshly.map((row) => row.infohash)));
+          // Showing the strip *is* seeing it. The list stays on screen for this
+          // visit from state, but the store is updated now — closing the tab
+          // without clicking anything must not bring the badge back.
+          setFresh(freshly);
+          await browser.storage.local.set({
+            [NEW_SEEN_KEY]: markSeen(seen, freshly.map((row) => row.infohash)),
+            [PENDING_KEY]: 0,
+          });
           if (!live) return;
         }
 
@@ -189,13 +196,6 @@ function Page() {
     setFresh([]);
     await browser.storage.local.set({ [NEW_SEEN_KEY]: nextSeen, [PENDING_KEY]: 0 });
   };
-
-  // Leaving the view counts as seeing it.
-  useEffect(() => {
-    if (view === 'reciters') return;
-    void dismissFresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
 
   const toggle = (infohash: string) => {
     setSelected((current) => {
