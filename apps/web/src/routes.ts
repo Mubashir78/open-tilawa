@@ -30,6 +30,7 @@ export type RouteName =
   | 'about'
   | 'privacy'
   | 'seed'
+  | 'extension'
   | 'account'
   | 'settings'
   | 'favorites'

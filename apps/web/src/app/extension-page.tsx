@@ -27,7 +27,7 @@ export default function ExtensionPage() {
         <ul className="mt-8 space-y-2 text-[1rem] leading-relaxed text-ink">
           {copy.points.map((point) => (
             <li key={point} className="flex gap-3">
-              <Icon name="check" size={18} className="mt-1 shrink-0 text-muted" />
+              <Icon name="check" size={16} className="mt-1 shrink-0 text-muted" />
               <span>{point}</span>
             </li>
           ))}
